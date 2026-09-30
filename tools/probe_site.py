@@ -56,6 +56,14 @@ if scripts:
         for mm in list(re.finditer(pat, bundle))[:4]:
             s = max(0, mm.start() - 400)
             print(f"--- {pat} @ {mm.start()}:\n{bundle[s:mm.start() + 400]}\n")
+    for pat in [r"m10\.", r"iyf\.tv", r"apiHost", r"ApiHost", r"apiUrl", r"\.api", r"getHost|GetHost"]:
+        hits = [mm.start() for mm in re.finditer(pat, bundle)]
+        print(f"--- bundle {pat}: {len(hits)} hits")
+        for h in hits[:3]:
+            print("   ", bundle[max(0, h - 250):h + 250].replace("\n", " "))
+    for pat in [r"m10", r"api[A-Za-z]*\"\s*:"]:
+        for mm in list(re.finditer(pat, home))[:5]:
+            print(f"--- home {pat}:", home[max(0, mm.start() - 200):mm.start() + 200].replace("\n", " "))
     hosts = sorted(set(re.findall(r'https?://[a-z0-9.-]+\.(?:iyf|yfsp)[a-z0-9.-]*', bundle)))
     print("hosts in bundle:", hosts)
     paths = sorted(set(re.findall(r'["\'`](/?(?:api|v\d)/[A-Za-z0-9/_-]+)', bundle)))
