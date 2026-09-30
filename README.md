@@ -16,11 +16,12 @@ Jetpack Compose for TV, Media3 (ExoPlayer) and Room.
 
 Every push to `main` publishes a signed APK to the latest GitHub release:
 <https://github.com/jh-wu/iyftv/releases/latest/download/iyftv.apk>
+(the repo is private, so that link only works while signed in to GitHub).
 
-1. On the TV, install the **Downloader** app (by AFTVnews) from the Play Store.
-2. Settings → System → About → click **Android TV OS build** 7 times to enable developer options.
-3. Settings → Apps → Security & restrictions → **Unknown sources** → allow Downloader.
-4. Open Downloader, enter the URL above, and install.
+1. On the TV: Settings → System → About → click **Android TV OS build** 7 times to enable developer options.
+2. Get the APK onto the TV, either with the **Send files to TV** app (install it on both your phone
+   and the TV, then send `iyftv.apk`), or with `adb install iyftv.apk` over the network.
+3. Allow the app you used under Settings → Apps → Security & restrictions → **Unknown sources**, then install.
 
 Later builds install over the old one and keep your watch history, because all builds share
 the same signing key (`app/debug.keystore`).
