@@ -6,4 +6,6 @@ sealed interface Load<out T> {
     data class Failed(val message: String) : Load<Nothing>
 }
 
-fun Throwable.userMessage(): String = message ?: javaClass.simpleName
+fun Throwable.userMessage(): String =
+    listOfNotNull(javaClass.simpleName, message, cause?.let { "(${it.javaClass.simpleName}: ${it.message})" })
+        .joinToString(" ")

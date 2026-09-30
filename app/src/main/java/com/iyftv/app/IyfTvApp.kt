@@ -5,6 +5,8 @@ import com.iyftv.app.data.VideoSource
 import com.iyftv.app.data.history.AppDatabase
 import com.iyftv.app.data.history.WatchHistoryDao
 import com.iyftv.app.data.iyf.IyfVideoSource
+import com.iyftv.app.data.iyf.WebViewCookieJar
+import com.iyftv.app.data.iyf.WebViewKeyFetcher
 import com.iyftv.app.data.iyf.WebViewStreamSniffer
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -23,8 +25,9 @@ class IyfTvApp : Application() {
         http = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
+            .cookieJar(WebViewCookieJar())
             .build()
-        source = IyfVideoSource(http, WebViewStreamSniffer(this))
+        source = IyfVideoSource(http, WebViewStreamSniffer(this), WebViewKeyFetcher(this))
         history = AppDatabase.create(this).watchHistory()
     }
 }

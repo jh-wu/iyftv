@@ -55,6 +55,14 @@ object IyfParsers {
         return (data["code"] as? JsonPrimitive)?.intOrNull == 1
     }
 
+    /** The site's own error message when `data.code` is non-zero. */
+    fun errorMessage(root: JsonElement): String? {
+        val data = (root as? JsonObject)?.get("data") as? JsonObject ?: return null
+        val code = (data["code"] as? JsonPrimitive)?.intOrNull ?: return null
+        if (code == 0) return null
+        return (data["msg"] as? JsonPrimitive)?.contentOrNull?.ifBlank { null } ?: "error code $code"
+    }
+
     /** Total result count, when the response reports one. */
     fun recordCount(root: JsonElement): Int? =
         objects(root).firstNotNullOfOrNull { o ->

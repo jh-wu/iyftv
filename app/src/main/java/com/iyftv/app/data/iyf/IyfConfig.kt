@@ -8,7 +8,15 @@ import com.iyftv.app.data.model.Category
  */
 object IyfConfig {
     const val WEB_HOST = "https://www.iyf.tv"
-    const val API_HOST = "https://m10.iyf.tv"
+
+    /**
+     * Domains the site is served under. The web client builds its API host as
+     * `m10.{current domain}`, so a mirror is tried when the main one can't be reached.
+     */
+    val SITE_DOMAINS = listOf("iyf.tv", "yfsp.tv", "ifsp.tv")
+
+    fun webHost(domain: String) = "https://www.$domain"
+    fun apiHost(domain: String) = "https://m10.$domain"
 
     const val USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +

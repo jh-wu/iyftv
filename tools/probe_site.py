@@ -105,6 +105,20 @@ for n in range(2, 12):
     except Exception as e:
         print(f"cid 0,1,{n}: parse failed {e} {body[:120]}")
 
+# 3c. Mirror domains
+section("mirror domains")
+for d in ["iyf.tv", "yfsp.tv", "ifsp.tv"]:
+    c1, h = get(f"https://www.{d}/")
+    mm = re.search(r'"pConfig"\s*:\s*(\{[^}]*\})', h)
+    ok = "no pConfig"
+    if mm:
+        pc = json.loads(mm.group(1))
+        cq = "cinema=1&page=1&size=2&orderby=0&desc=1&cid=0,1,3&isserial=-1&isIndex=-1&isfree=-1"
+        vv = md5(f"{pc['publicKey']}&{cq}&{pc['privateKey'][0]}")
+        c2, b = get(f"https://m10.{d}/api/list/Search?{cq}&vv={vv}&pub={pc['publicKey']}")
+        ok = f"api HTTP {c2}: {b[:100]}"
+    print(f"{d}: www HTTP {c1}, {ok}")
+
 # 4. Search (worked unsigned-ish before) and field names
 section("search")
 sq = "tags=" + urllib.parse.quote("繁花") + "&orderby=4&page=1&size=10&desc=1&isserial=-1"

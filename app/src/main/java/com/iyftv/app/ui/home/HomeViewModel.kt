@@ -37,12 +37,12 @@ class HomeViewModel(
         _rows.value = Load.Loading
         viewModelScope.launch {
             _rows.value = runCatching {
-                source.categories()
-                    .map { c -> async { runCatching { CategoryRow(c, source.list(c, 1).items) }.getOrNull() } }
+                val results = source.categories()
+                    .map { c -> async { runCatching { CategoryRow(c, source.list(c, 1).items) } } }
                     .awaitAll()
-                    .filterNotNull()
-                    .filter { it.videos.isNotEmpty() }
-                    .ifEmpty { error("无法加载内容") }
+                val rows = results.mapNotNull { it.getOrNull() }.filter { it.videos.isNotEmpty() }
+                // Show the first real error rather than a generic message, so failures can be diagnosed.
+                rows.ifEmpty { throw results.firstNotNullOfOrNull { it.exceptionOrNull() } ?: IllegalStateException("没有内容") }
             }.fold({ Load.Ready(it) }, { Load.Failed(it.userMessage()) })
         }
     }

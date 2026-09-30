@@ -18,10 +18,12 @@ import java.io.IOException
 class IyfVideoSource(
     private val http: OkHttpClient,
     private val sniffer: StreamSniffer?,
+    private val browserKeys: BrowserKeyFetcher? = null,
 ) : VideoSource {
 
     private val keysLock = Mutex()
     private var keys: IyfKeys? = null
+    private var domain = IyfConfig.SITE_DOMAINS.first()
 
     override suspend fun categories(): List<Category> = IyfConfig.categories
 
@@ -62,17 +64,35 @@ class IyfVideoSource(
     private suspend fun api(path: String, query: String): JsonElement {
         repeat(2) { attempt ->
             val k = keys(refresh = attempt > 0)
-            val root = IyfParsers.parse(get("${IyfConfig.API_HOST}$path?${IyfSigner.sign(query, k)}"))
-            if (!IyfParsers.isSignatureError(root)) return root
+            val root = IyfParsers.parse(get("${IyfConfig.apiHost(domain)}$path?${IyfSigner.sign(query, k)}"))
+            if (IyfParsers.isSignatureError(root)) return@repeat
+            IyfParsers.errorMessage(root)?.let { throw IOException("iyf.tv: $it") }
+            return root
         }
         throw IOException("iyf.tv rejected the request signature")
     }
 
+    /**
+     * The keys come from the homepage. Each known domain is tried in turn, first
+     * with a plain HTTP fetch and then, if that fails (for example the site
+     * answers with a Cloudflare check), with a real browser engine.
+     */
     private suspend fun keys(refresh: Boolean): IyfKeys = keysLock.withLock {
-        keys?.takeUnless { refresh }
-            ?: (IyfSigner.parseKeys(get("${IyfConfig.WEB_HOST}/"))
-                ?: throw IOException("Could not find API keys on the iyf.tv homepage"))
-                .also { keys = it }
+        keys?.takeUnless { refresh }?.let { return@withLock it }
+        val errors = mutableListOf<String>()
+        for (d in listOf(domain) + (IyfConfig.SITE_DOMAINS - domain)) {
+            val page = "${IyfConfig.webHost(d)}/"
+            val found = runCatching { IyfSigner.parseKeys(get(page)) ?: error("no keys in page") }
+                .onFailure { errors += "$d: ${it.message}" }
+                .getOrNull()
+                ?: browserKeys?.fetch(page)
+            if (found != null) {
+                domain = d
+                keys = found
+                return@withLock found
+            }
+        }
+        throw IOException("Could not reach iyf.tv (${errors.joinToString("; ")})")
     }
 
     private suspend fun get(url: String): String = withContext(Dispatchers.IO) {
