@@ -16,7 +16,6 @@ Jetpack Compose for TV, Media3 (ExoPlayer) and Room.
 
 Every push to `main` publishes a signed APK to the latest GitHub release:
 <https://github.com/jh-wu/iyftv/releases/latest/download/iyftv.apk>
-(the repo is private, so that link only works while signed in to GitHub).
 
 1. On the TV: Settings → System → About → click **Android TV OS build** 7 times to enable developer options.
 2. Get the APK onto the TV, either with the **Send files to TV** app (install it on both your phone
@@ -25,6 +24,14 @@ Every push to `main` publishes a signed APK to the latest GitHub release:
 
 Later builds install over the old one and keep your watch history, because all builds share
 the same signing key (`app/debug.keystore`).
+
+### Updates
+
+After the first install the app updates itself. On start it checks the latest GitHub release;
+when its `build-N` tag is newer than the installed build it asks **更新** or **以后再说**. The
+**检查更新** button on the home screen checks on demand. Updating downloads the APK and opens the
+system installer; the first time, Android asks you to allow iyfTV to install unknown apps.
+This needs the repo to stay public, since the app reads releases without signing in.
 
 ## Build
 

@@ -31,10 +31,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk iyftv.apk
+          # The commit message becomes the "what's new" text in the app's update prompt.
+          { git log -1 --format=%B; echo; echo "Built from ${{ github.sha }}. Install: https://github.com/${{ github.repository }}/releases/latest/download/iyftv.apk"; } > notes.txt
           gh release create "build-${{ github.run_number }}" iyftv.apk \
             --target "${{ github.sha }}" --latest \
             --title "iyfTV build ${{ github.run_number }}" \
-            --notes "Built from ${{ github.sha }}. Install: https://github.com/${{ github.repository }}/releases/latest/download/iyftv.apk"
+            --notes-file notes.txt
 
   probe-site:
     # Captures what iyf.tv actually returns so the client can be checked against it.

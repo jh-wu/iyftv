@@ -25,6 +25,8 @@ import com.iyftv.app.ui.home.HomeViewModel
 import com.iyftv.app.ui.player.PlayerActivity
 import com.iyftv.app.ui.search.SearchScreen
 import com.iyftv.app.ui.search.SearchViewModel
+import com.iyftv.app.ui.update.UpdateDialog
+import com.iyftv.app.ui.update.UpdateViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,6 +39,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             IyfTheme {
                 Surface(Modifier.fillMaxSize(), shape = RectangleShape) {
+                    val updates = viewModel { UpdateViewModel(app.updates, app) }
+                    UpdateDialog(updates)
                     val nav = rememberNavController()
                     val openVideo = { key: String -> nav.navigate("detail/${Uri.encode(key)}") }
 
@@ -49,6 +53,8 @@ class MainActivity : ComponentActivity() {
                                 onOpenCategory = { c -> nav.navigate("category/${Uri.encode(c.id)}/${Uri.encode(c.name)}") },
                                 onSearch = { nav.navigate("search") },
                                 onHistory = { nav.navigate("history") },
+                                onCheckUpdate = updates::checkNow,
+                                version = "build ${BuildConfig.VERSION_CODE}",
                             )
                         }
                         composable("category/{id}/{name}") { entry ->

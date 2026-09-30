@@ -8,6 +8,8 @@ import com.iyftv.app.data.iyf.IyfVideoSource
 import com.iyftv.app.data.iyf.WebViewCookieJar
 import com.iyftv.app.data.iyf.WebViewKeyFetcher
 import com.iyftv.app.data.iyf.WebViewStreamSniffer
+import com.iyftv.app.data.update.UpdateChecker
+import okhttp3.CookieJar
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
@@ -19,6 +21,8 @@ class IyfTvApp : Application() {
         private set
     lateinit var history: WatchHistoryDao
         private set
+    lateinit var updates: UpdateChecker
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -29,5 +33,9 @@ class IyfTvApp : Application() {
             .build()
         source = IyfVideoSource(http, WebViewStreamSniffer(this), WebViewKeyFetcher(this))
         history = AppDatabase.create(this).watchHistory()
+        updates = UpdateChecker(
+            http.newBuilder().cookieJar(CookieJar.NO_COOKIES).readTimeout(60, TimeUnit.SECONDS).build(),
+            BuildConfig.VERSION_CODE,
+        )
     }
 }

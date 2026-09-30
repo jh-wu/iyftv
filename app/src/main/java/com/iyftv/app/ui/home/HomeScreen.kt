@@ -33,6 +33,8 @@ fun HomeScreen(
     onOpenCategory: (Category) -> Unit,
     onSearch: () -> Unit,
     onHistory: () -> Unit,
+    onCheckUpdate: () -> Unit,
+    version: String,
 ) {
     val rows by vm.rows.collectAsState()
     val allRecent by vm.continueWatching.collectAsState()
@@ -52,6 +54,12 @@ fun HomeScreen(
                 Text("iyfTV", style = MaterialTheme.typography.headlineMedium)
                 Button(onClick = onSearch) { Text("搜索") }
                 Button(onClick = onHistory) { Text("观看记录") }
+                Button(onClick = onCheckUpdate) { Text("检查更新") }
+                Text(
+                    version,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                )
             }
         }
         if (recent.isNotEmpty()) {
