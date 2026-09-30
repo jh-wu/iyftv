@@ -52,7 +52,7 @@ if scripts:
     code, bundle = get(WEB + scripts[0])
     save("main.js", bundle)
     section(f"main bundle {scripts[0]} HTTP {code}, {len(bundle)} bytes")
-    for pat in [r"vv=", r"&pub=", r"privateKey", r"publicKey", r"md5\("]:
+    for pat in []:
         for mm in list(re.finditer(pat, bundle))[:4]:
             s = max(0, mm.start() - 400)
             print(f"--- {pat} @ {mm.start()}:\n{bundle[s:mm.start() + 400]}\n")
@@ -82,6 +82,21 @@ for name, vv in cands.items():
     print(name, code, body[:160])
     save(f"list_{name.replace('&', '_')}.json", body)
 
+# 3b. Category ids and list item fields
+section("categories")
+for n in range(2, 12):
+    cq = f"cinema=1&page=1&size=2&orderby=0&desc=1&cid=0,1,{n}&isserial=-1&isIndex=-1&isfree=-1"
+    code, body = get(f"{API}/api/list/Search?{cq}&vv={md5(f'{pub}&{cq.lower()}&{priv}')}&pub={pub}")
+    try:
+        info = json.loads(body)["data"]["info"][0]
+        items = info["result"]
+        print(f"cid 0,1,{n}: count={info.get('recordcount')} type={items[0].get('atypeName') if items else None}")
+        if n == 4 and items:
+            print("list item keys:", sorted(items[0].keys()))
+            print("list item:", json.dumps(items[0], ensure_ascii=False)[:800])
+    except Exception as e:
+        print(f"cid 0,1,{n}: parse failed {e} {body[:120]}")
+
 # 4. Search (worked unsigned-ish before) and field names
 section("search")
 sq = "tags=" + urllib.parse.quote("繁花") + "&orderby=4&page=1&size=10&desc=1&isserial=-1"
@@ -110,6 +125,23 @@ if first:
             section(f"{path} with {field}={vid}: HTTP {code}")
             print(body[:1500])
             save(f"{path.split('/')[-1]}_{field}.json", body)
+
+    # Play API for the first episode
+    try:
+        ep = json.loads(open(os.path.join(OUT, "languagesplaylist_contxt.json")).read())["data"]["info"][0]["playList"][0]["key"]
+    except Exception as e:
+        ep = None
+        print("no episode key", e)
+    if ep:
+        for qq in [
+            f"cinema=1&id={ep}&a=0&lang=none&usersign=1&region=GL.&device=1&isMasterSupport=1",
+            f"cinema=1&id={ep}&a=0&lang=none&usersign=1&region=GL.&device=0&isMasterSupport=1",
+        ]:
+            vv = md5(f"{pub}&{qq.lower()}&{priv}")
+            code, body = get(f"{API}/v3/video/play?{qq}&vv={vv}&pub={pub}")
+            section(f"/v3/video/play {qq}: HTTP {code}")
+            print(body[:2500])
+            save("play.json", body)
 
     # Watch page HTML for the title
     vid = first.get("contxt") or first.get("key")
