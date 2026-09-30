@@ -8,6 +8,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 
@@ -23,11 +24,18 @@ object IyfParsers {
 
     fun parse(body: String): JsonElement = json.parseToJsonElement(body)
 
-    /** Every object in the tree that looks like a title card, in document order. */
+    /**
+     * Every object in the tree that looks like a title card, in document order.
+     * Category lists carry the title's key in `key`; search results carry it in
+     * `contxt` (which elsewhere holds the synopsis), so that one is only taken
+     * when it looks like a key.
+     */
     fun videos(root: JsonElement): List<VideoSummary> =
         objects(root)
             .mapNotNull { o ->
-                val key = o.str("key", "mediaKey", "videoKey", "vid") ?: return@mapNotNull null
+                val key = o.str("key", "mediaKey")
+                    ?: o.str("contxt")?.takeIf { KEY_PATTERN.matches(it) }
+                    ?: return@mapNotNull null
                 val title = o.str("title", "name", "videoName") ?: return@mapNotNull null
                 val image = o.str("image", "imgPath", "coverImgUrl", "img", "pic")
                     ?: return@mapNotNull null
@@ -35,7 +43,7 @@ object IyfParsers {
                     key = key,
                     title = title,
                     imageUrl = absolute(image),
-                    subtitle = o.str("lastName", "updateweekly", "contxt", "regional", "year"),
+                    subtitle = o.str("lastName", "updateweekly", "regional", "year"),
                 )
             }
             .distinctBy { it.key }
@@ -60,7 +68,7 @@ object IyfParsers {
             meta = listOfNotNull(
                 info?.str("videoType", "cidMapper"),
                 info?.str("regional", "area"),
-                info?.str("year", "addTime")?.take(4),
+                info?.str("post_Year", "year"),
                 info?.str("directors", "director")?.let { "导演 $it" },
                 info?.str("starring", "actor")?.let { "主演 $it" },
             ).joinToString(" · ").ifBlank { null },
@@ -79,16 +87,19 @@ object IyfParsers {
             .distinctBy { it.key }
             .toList()
 
-    /** The best HLS/MP4 URL in a play response, preferring the first `flvPathList` entry. */
+    /**
+     * The HLS URL in a play response. `flvPathList` also holds a short MP4 pre-roll
+     * ad (`isHls: false`), so only HLS entries are taken.
+     */
     fun streamUrl(root: JsonElement): String? {
-        val preferred = arraysNamed(root, "flvPathList").flatMap { it.asSequence() }
-            .flatMap { strings(it) }
-            .firstOrNull(::isMediaUrl)
-        return preferred ?: strings(root).firstOrNull(::isMediaUrl)
+        val hlsEntries = objects(root).filter { (it["isHls"] as? JsonPrimitive)?.booleanOrNull == true }
+        return hlsEntries.mapNotNull { it.str("result") }.firstOrNull(::isHlsUrl)
+            ?: strings(root).firstOrNull(::isHlsUrl)
     }
 
-    fun isMediaUrl(s: String) =
-        s.startsWith("http") && (s.contains(".m3u8") || s.contains(".mp4"))
+    fun isHlsUrl(s: String) = s.startsWith("http") && s.contains(".m3u8")
+
+    private val KEY_PATTERN = Regex("[A-Za-z0-9_-]{8,16}")
 
     private fun absolute(url: String) = when {
         url.startsWith("//") -> "https:$url"

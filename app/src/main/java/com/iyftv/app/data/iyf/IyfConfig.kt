@@ -3,11 +3,8 @@ package com.iyftv.app.data.iyf
 import com.iyftv.app.data.model.Category
 
 /**
- * Hosts, endpoints and catalog ids for iyf.tv.
- *
- * NOTE: these were written without live access to the site (the build
- * environment could not reach it) and must be checked against the browser's
- * network tab. They are kept in one place so fixing them is a one-file change.
+ * Hosts, endpoints and catalog ids for iyf.tv, as used by its web client.
+ * `tools/probe_site.py` (run in CI) checks them against the live site.
  */
 object IyfConfig {
     const val WEB_HOST = "https://www.iyf.tv"
@@ -25,6 +22,7 @@ object IyfConfig {
         Category("0,1,5", "综艺"),
         Category("0,1,6", "动漫"),
         Category("0,1,7", "纪录片"),
+        Category("0,1,8", "短剧"),
     )
 
     fun listQuery(cid: String, page: Int) =

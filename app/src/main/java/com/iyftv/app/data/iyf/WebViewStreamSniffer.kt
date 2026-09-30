@@ -13,8 +13,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
 /**
- * Loads the watch page in an off-screen WebView and returns the first HLS/MP4
- * URL the page's own player requests. This keeps playback working even if the
+ * Loads the watch page in an off-screen WebView and returns the first HLS
+ * URL the page's own player requests (MP4s there are pre-roll ads). This keeps playback working even if the
  * signed play API changes, because the site's JavaScript does the signing.
  */
 class WebViewStreamSniffer(
@@ -40,7 +40,7 @@ class WebViewStreamSniffer(
                             request: WebResourceRequest,
                         ): WebResourceResponse? {
                             val url = request.url.toString()
-                            if (url.contains(".m3u8") || url.contains(".mp4")) {
+                            if (IyfParsers.isHlsUrl(url)) {
                                 v.post { if (cont.isActive) cont.resume(url) }
                             }
                             return null

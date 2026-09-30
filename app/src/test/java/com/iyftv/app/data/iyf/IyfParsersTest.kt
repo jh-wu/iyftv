@@ -4,50 +4,71 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
+/** Fixtures are trimmed copies of live iyf.tv responses (captured by tools/probe_site.py). */
 class IyfParsersTest {
 
     private val listJson = """
-        {"ret":200,"data":{"info":[{"recordcount":80,"result":[
-          {"key":"abc","title":"长相思","image":"//img.example/a.jpg","lastName":"第39集"},
-          {"key":"def","title":"繁花","image":"https://img.example/b.jpg"},
-          {"key":"abc","title":"长相思","image":"//img.example/a.jpg"},
-          {"key":"nope","title":"No image"}
-        ]}]}}
+        {"ret":200,"data":{"code":0,"msg":"","info":[{"recordcount":15026,"result":[
+          {"atypeName":"电视剧","videoClassID":"0,1,4,152","image":"https://static.iyf.tv/upload/video/a.jpg",
+           "key":"xRNzZ3jqQ26","title":"消失的裂痕","lastName":"06集全","year":2026,
+           "contxt":"一名母亲在儿子失踪三年后深陷创伤。","lastKey":"FTyi6tzQ1Im"},
+          {"image":"//static.iyf.tv/b.jpg","key":"abcdEFGH123","title":"繁花"},
+          {"key":"noImage0001","title":"No image"}
+        ]}]},"msg":""}
     """.trimIndent()
 
-    @Test fun videos_areFoundByShapeAndDeduplicated() {
+    private val searchJson = """
+        {"ret":200,"data":{"code":0,"msg":"","info":[{"recordcount":7,"result":[
+          {"lastName":"全集","contxt":"nnbCytuwQzf","imgPath":"https://static.iyf.tv/upload/video/c.gif",
+           "cidMapper":"0,1,8,158|0,1,8,211","title":"雾散繁花","id":48288,"shortDes":"本剧以温情的傲江小镇为故事舞台"}
+        ]}]},"msg":""}
+    """.trimIndent()
+
+    @Test fun listItems_useKeyAndImage_notSynopsis() {
         val videos = IyfParsers.videos(IyfParsers.parse(listJson))
-        assertEquals(listOf("abc", "def"), videos.map { it.key })
-        assertEquals("https://img.example/a.jpg", videos[0].imageUrl)
-        assertEquals("第39集", videos[0].subtitle)
+        assertEquals(listOf("xRNzZ3jqQ26", "abcdEFGH123"), videos.map { it.key })
+        assertEquals("06集全", videos[0].subtitle)
+        assertEquals("https://static.iyf.tv/b.jpg", videos[1].imageUrl)
+        assertEquals(15026, IyfParsers.recordCount(IyfParsers.parse(listJson)))
     }
 
-    @Test fun recordCount_isRead() {
-        assertEquals(80, IyfParsers.recordCount(IyfParsers.parse(listJson)))
+    @Test fun searchItems_takeKeyFromContxt() {
+        val videos = IyfParsers.videos(IyfParsers.parse(searchJson))
+        assertEquals(listOf("nnbCytuwQzf"), videos.map { it.key })
+        assertEquals("雾散繁花", videos[0].title)
+        assertEquals("https://static.iyf.tv/upload/video/c.gif", videos[0].imageUrl)
     }
 
     @Test fun detail_combinesInfoAndPlaylist() {
         val detail = IyfParsers.parse(
-            """{"data":{"info":[{"key":"abc","title":"长相思","imgPath":"https://i/a.jpg","contxt":"简介","regional":"大陆","year":"2024"}]}}"""
+            """{"ret":200,"data":{"code":0,"info":[{"id":48288,"post_Year":"2026","channel":"短剧","videoType":"都市",
+               "contxt":"本剧以温情的傲江小镇为故事舞台。","title":"雾散繁花","imgPath":"https://static.iyf.tv/c.gif",
+               "key":"nnbCytuwQzf","publisher":{"title":"红豆生南","key":"mBhkXTlQorfMQ3Btppbkc0"},
+               "stars":[],"directors":[],"regional":"大陆"}]}}"""
         )
         val playlist = IyfParsers.parse(
-            """{"data":{"info":[{"playList":[{"key":"e1","name":"第1集"},{"key":"e2","name":"第2集"}]}]}}"""
+            """{"ret":200,"data":{"code":0,"info":[{"pageSize":50,"playList":[
+               {"id":1504729,"key":"Er9rjQrnUIA","name":"01"},{"id":1504730,"key":"EPWbgtUTZMA","name":"02"}]}]}}"""
         )
-        val d = IyfParsers.detail("abc", detail, playlist)
-        assertEquals("长相思", d.title)
-        assertEquals("简介", d.description)
-        assertEquals(listOf("e1", "e2"), d.episodes.map { it.key })
-        assertEquals("大陆 · 2024", d.meta)
+        val d = IyfParsers.detail("nnbCytuwQzf", detail, playlist)
+        assertEquals("雾散繁花", d.title)
+        assertEquals("本剧以温情的傲江小镇为故事舞台。", d.description)
+        assertEquals("都市 · 大陆 · 2026", d.meta)
+        assertEquals(listOf("Er9rjQrnUIA", "EPWbgtUTZMA"), d.episodes.map { it.key })
     }
 
-    @Test fun streamUrl_prefersFlvPathList() {
+    @Test fun streamUrl_skipsPreRollMp4AndTakesHls() {
         val play = IyfParsers.parse(
-            """{"data":{"info":[{"poster":"https://x/p.m3u8.jpg","flvPathList":[{"isHls":true,"result":"https://cdn/v/index.m3u8?t=1"}]}]}}"""
+            """{"ret":200,"data":{"code":0,"info":[{"flvPathList":[
+               {"isHls":false,"result":"https://s1-a1.global-cdn.me/vod/086F8B75362-06022.mp4","duration":20},
+               {"isHls":true,"result":"https://sss111-e1.pipecdn.vip/x/chunklist.m3u8?vendtime=1&vhash=a","bitrate":1080}
+            ],"key":"nnbCytuwQzf"}]}}"""
         )
-        assertEquals("https://cdn/v/index.m3u8?t=1", IyfParsers.streamUrl(play))
+        assertEquals("https://sss111-e1.pipecdn.vip/x/chunklist.m3u8?vendtime=1&vhash=a", IyfParsers.streamUrl(play))
     }
 
-    @Test fun streamUrl_nullWhenAbsent() {
-        assertNull(IyfParsers.streamUrl(IyfParsers.parse("""{"data":{"info":[]}}""")))
+    @Test fun streamUrl_nullWhenOnlyAds() {
+        val play = IyfParsers.parse("""{"data":{"info":[{"flvPathList":[{"isHls":false,"result":"https://ad/x.mp4"}]}]}}""")
+        assertNull(IyfParsers.streamUrl(play))
     }
 }
