@@ -32,9 +32,11 @@ object IyfSigner {
      * unrelated `publicKey` (Cloudflare), so only the `pConfig` block is read.
      */
     fun parseKeys(html: String): IyfKeys? {
-        val block = Regex("\"pConfig\"\\s*:\\s*\\{([^}]*)}").find(html)?.groupValues?.get(1) ?: return null
+        // Braces and brackets are all escaped: Android's ICU regex engine rejects a
+        // bare `}` or `]` that the desktop JVM accepts.
+        val block = Regex("\"pConfig\"\\s*:\\s*\\{([^\\}]*)\\}").find(html)?.groupValues?.get(1) ?: return null
         val pub = Regex("\"publicKey\"\\s*:\\s*\"([^\"]+)\"").find(block)?.groupValues?.get(1) ?: return null
-        val privs = Regex("\"privateKey\"\\s*:\\s*\\[([^\\]]*)]").find(block)?.groupValues?.get(1)
+        val privs = Regex("\"privateKey\"\\s*:\\s*\\[([^\\]]*)\\]").find(block)?.groupValues?.get(1)
             ?.let { Regex("\"([^\"]+)\"").findAll(it).map { m -> m.groupValues[1] }.toList() }
             ?: Regex("\"privateKey\"\\s*:\\s*\"([^\"]+)\"").find(block)?.groupValues?.get(1)?.let(::listOf)
             ?: emptyList()

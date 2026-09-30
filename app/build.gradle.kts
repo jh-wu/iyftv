@@ -16,6 +16,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -42,6 +43,10 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    // The JVM unit tests also run on the emulator, where Android's own regex
+    // and JSON behaviour applies.
+    sourceSets["androidTest"].java.srcDir("src/test/java")
+
     buildFeatures {
         compose = true
     }
@@ -80,4 +85,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
 }
