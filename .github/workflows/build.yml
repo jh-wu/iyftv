@@ -8,6 +8,8 @@ on:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -23,6 +25,16 @@ jobs:
         with:
           name: iyftv-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+      - name: Publish APK as the latest release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk iyftv.apk
+          gh release create "build-${{ github.run_number }}" iyftv.apk \
+            --target "${{ github.sha }}" --latest \
+            --title "iyfTV build ${{ github.run_number }}" \
+            --notes "Built from ${{ github.sha }}. Install: https://github.com/${{ github.repository }}/releases/latest/download/iyftv.apk"
 
   probe-site:
     # Captures what iyf.tv actually returns so the client can be checked against it.

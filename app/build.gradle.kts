@@ -18,6 +18,17 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        // A fixed debug key checked into the repo, so every CI build can be
+        // installed over the previous one without losing watch history.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

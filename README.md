@@ -12,6 +12,19 @@ Jetpack Compose for TV, Media3 (ExoPlayer) and Room.
 - **Watch history**: position is saved every 10 seconds and when leaving the player. The home
   screen shows a "继续观看" row, the detail page offers "继续播放", and "观看记录" lists everything.
 
+## Install on Google TV
+
+Every push to `main` publishes a signed APK to the latest GitHub release:
+<https://github.com/jh-wu/iyftv/releases/latest/download/iyftv.apk>
+
+1. On the TV, install the **Downloader** app (by AFTVnews) from the Play Store.
+2. Settings → System → About → click **Android TV OS build** 7 times to enable developer options.
+3. Settings → Apps → Security & restrictions → **Unknown sources** → allow Downloader.
+4. Open Downloader, enter the URL above, and install.
+
+Later builds install over the old one and keep your watch history, because all builds share
+the same signing key (`app/debug.keystore`).
+
 ## Build
 
 Requires Android Studio (or the Android SDK with platform 35) and JDK 17+.
@@ -31,13 +44,14 @@ app/src/main/java/com/iyftv/app/
   ui/                          Compose for TV screens and the Media3 player activity
 ```
 
-## Site integration status
+## How the site integration works
 
-The iyf.tv client in `data/iyf/` was written without live access to the site, so the endpoint
-paths, query parameters, category ids and the `vv`/`pub` signing scheme in `IyfConfig.kt` and
-`IyfSigner.kt` still need checking against the browser's network tab. The JSON parsers find
-titles, episodes and stream URLs by the fields they carry rather than fixed paths, and playback
-falls back to loading the site's own watch page in an off-screen WebView and grabbing the
-`.m3u8` URL its player requests, so playback can work even if the play API differs.
+The app calls the same JSON API as the iyf.tv web client (`m10.iyf.tv`). Each call is signed
+like the web client's `uriSignature`: `vv = md5(publicKey & lowercase(query) & privateKey)`,
+with the keys read from the `pConfig` block the homepage inlines. If the play API ever fails,
+playback falls back to loading the site's watch page in an off-screen WebView and taking the
+`.m3u8` URL its player requests.
 
-Unit tests for the signer and parsers: `./gradlew testDebugUnitTest`.
+- `./gradlew testDebugUnitTest` runs the parser and signer tests (fixtures are copies of live responses).
+- `IYF_LIVE=1 ./gradlew testDebugUnitTest --tests '*LiveSiteTest*'` runs the client against the real site.
+- CI's `probe-site` job runs both the live test and `tools/probe_site.py`, which dumps raw API responses.
