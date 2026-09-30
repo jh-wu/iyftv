@@ -58,16 +58,21 @@ class IyfVideoSource(
         return Page(items, hasMore)
     }
 
+    /** Calls the API; if the site rejects the signature (its keys rotate), re-reads them once. */
     private suspend fun api(path: String, query: String): JsonElement {
-        val k = keys()
-        val url = "${IyfConfig.API_HOST}$path?${IyfSigner.sign(query, k)}"
-        return IyfParsers.parse(get(url))
+        repeat(2) { attempt ->
+            val k = keys(refresh = attempt > 0)
+            val root = IyfParsers.parse(get("${IyfConfig.API_HOST}$path?${IyfSigner.sign(query, k)}"))
+            if (!IyfParsers.isSignatureError(root)) return root
+        }
+        throw IOException("iyf.tv rejected the request signature")
     }
 
-    private suspend fun keys(): IyfKeys = keysLock.withLock {
-        keys ?: (IyfSigner.parseKeys(get("${IyfConfig.WEB_HOST}/"))
-            ?: throw IOException("Could not find API keys on the iyf.tv homepage"))
-            .also { keys = it }
+    private suspend fun keys(refresh: Boolean): IyfKeys = keysLock.withLock {
+        keys?.takeUnless { refresh }
+            ?: (IyfSigner.parseKeys(get("${IyfConfig.WEB_HOST}/"))
+                ?: throw IOException("Could not find API keys on the iyf.tv homepage"))
+                .also { keys = it }
     }
 
     private suspend fun get(url: String): String = withContext(Dispatchers.IO) {

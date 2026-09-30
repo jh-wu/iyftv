@@ -49,6 +49,12 @@ object IyfParsers {
             .distinctBy { it.key }
             .toList()
 
+    /** The API answers a bad `vv` with HTTP 200 and `data.code == 1` ("用户签名错误"). */
+    fun isSignatureError(root: JsonElement): Boolean {
+        val data = (root as? JsonObject)?.get("data") as? JsonObject ?: return false
+        return (data["code"] as? JsonPrimitive)?.intOrNull == 1
+    }
+
     /** Total result count, when the response reports one. */
     fun recordCount(root: JsonElement): Int? =
         objects(root).firstNotNullOfOrNull { o ->

@@ -71,4 +71,9 @@ class IyfParsersTest {
         val play = IyfParsers.parse("""{"data":{"info":[{"flvPathList":[{"isHls":false,"result":"https://ad/x.mp4"}]}]}}""")
         assertNull(IyfParsers.streamUrl(play))
     }
+
+    @Test fun signatureError_isDetected() {
+        assertEquals(true, IyfParsers.isSignatureError(IyfParsers.parse("""{"ret":200,"data":{"code":1,"msg":"用户签名错误","info":[]},"msg":""}""")))
+        assertEquals(false, IyfParsers.isSignatureError(IyfParsers.parse(listJson)))
+    }
 }
