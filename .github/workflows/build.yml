@@ -35,10 +35,13 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
-      - name: Run the app's site client against iyf.tv
-        run: IYF_LIVE=1 ./gradlew testDebugUnitTest --tests '*LiveSiteTest*' -i | grep -E '^(电|综|动|纪|短|search|detail|stream)|LiveSiteTest|FAILED|Error' || true
       - name: Probe iyf.tv
         run: python3 tools/probe_site.py probe-out
+      - name: Run the app's site client against iyf.tv
+        run: |
+          status=0; IYF_LIVE=1 ./gradlew testDebugUnitTest --tests '*LiveSiteTest*' -q || status=$?
+          python3 -c "import glob,re;[print(re.sub(r'(?s).*<system-out><!\\[CDATA\\[(.*?)\\]\\]>.*', r'\\1', open(f).read())) for f in glob.glob('app/build/test-results/testDebugUnitTest/*LiveSite*.xml')]"
+          exit $status
       - uses: actions/upload-artifact@v4
         if: always()
         with:
