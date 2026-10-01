@@ -440,11 +440,22 @@ class WebPlayerActivity : ComponentActivity() {
                 s.textContent='html,body{overflow:hidden!important;background:#000!important}'+
                   'video.iyftv-full{position:fixed!important;left:0!important;top:0!important;width:100vw!important;'+
                   'height:100vh!important;max-width:none!important;max-height:none!important;z-index:2147483647!important;'+
-                  'background:#000!important;object-fit:contain!important;transform:none!important}';
+                  'background:#000!important;object-fit:contain!important;transform:none!important}'+
+                  'html.iyftv-clean body>:not(video.iyftv-full){display:none!important}';
                 document.head.appendChild(s);
               }
               if(v.parentNode!==document.body){ document.body.appendChild(v); }
               v.classList.add('iyftv-full');
+              // Other videos on the page (ads) stay hidden and silent.
+              [].forEach.call(document.querySelectorAll('video'),function(x){
+                if(x===v) return;
+                x.classList.remove('iyftv-full');
+                if(!x.muted){ x.muted=true; x.__iyftvMuted=true; }
+              });
+              if(v.__iyftvMuted){ v.muted=false; v.__iyftvMuted=false; }
+              // Once the episode itself is playing, hide everything else on the page,
+              // so ads that pop up over the video mid-way are never seen.
+              if(isFinite(v.duration)&&v.duration>60&&v.readyState>=2){ document.documentElement.classList.add('iyftv-clean'); }
               if(v.paused && !v.__iyftvPaused){ var p=v.play(); if(p&&p.catch) p.catch(function(){}); }
               return 'ok';
             })()

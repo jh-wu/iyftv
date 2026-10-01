@@ -1,5 +1,6 @@
 package com.iyftv.app.ui.home
 
+import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iyftv.app.data.VideoSource
@@ -13,7 +14,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class HomeViewModel(source: VideoSource, history: WatchHistoryDao) : ViewModel() {
+class HomeViewModel(source: VideoSource, history: WatchHistoryDao, private val prefs: SharedPreferences) : ViewModel() {
+
+    /** The open tab, kept across visits to a title and app restarts. */
+    private val _selectedTab = MutableStateFlow(prefs.getInt(KEY_TAB, 0))
+    val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
+
+    fun selectTab(index: Int) {
+        if (_selectedTab.value == index) return
+        _selectedTab.value = index
+        prefs.edit().putInt(KEY_TAB, index).apply()
+    }
+
 
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
     val categories: StateFlow<List<Category>> = _categories.asStateFlow()
@@ -23,5 +35,9 @@ class HomeViewModel(source: VideoSource, history: WatchHistoryDao) : ViewModel()
 
     init {
         viewModelScope.launch { _categories.value = source.categories() }
+    }
+
+    private companion object {
+        const val KEY_TAB = "selected_tab"
     }
 }

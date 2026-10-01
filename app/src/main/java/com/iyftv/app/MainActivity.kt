@@ -45,10 +45,11 @@ class MainActivity : ComponentActivity() {
                     NavHost(nav, startDestination = "home") {
                         composable("home") {
                             HomeScreen(
-                                vm = viewModel { HomeViewModel(app.source, app.history) },
+                                vm = viewModel { HomeViewModel(app.source, app.history, app.getSharedPreferences("home", MODE_PRIVATE)) },
                                 categoryViewModel = { c -> viewModel(key = "category-${c.id}") { CategoryViewModel(app.source, c) } },
                                 onOpenVideo = openVideo,
-                                onResume = { play(it.videoKey, it.episodeKey) },
+                                // Open the title's page under the player, so leaving playback lands there.
+                                onResume = { openVideo(it.videoKey); play(it.videoKey, it.episodeKey) },
                                 onSearch = { nav.navigate("search") },
                                 onHistory = { nav.navigate("history") },
                                 onCheckUpdate = updates::checkNow,

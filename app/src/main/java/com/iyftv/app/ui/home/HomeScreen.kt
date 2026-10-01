@@ -14,14 +14,15 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
@@ -54,7 +55,9 @@ fun HomeScreen(
     val categories by vm.categories.collectAsState()
     val allRecent by vm.continueWatching.collectAsState()
     val recent = allRecent.filterNot { it.isFinished }
-    var selected by rememberSaveable { mutableIntStateOf(0) }
+    val selected by vm.selectedTab.collectAsState()
+    // Coming back from a title, focus returns to the tab that was open, so it stays selected.
+    val tabFocus = remember { FocusRequester() }
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -75,11 +78,18 @@ fun HomeScreen(
         val current = selected.coerceIn(tabNames.indices)
         TabRow(selectedTabIndex = current, modifier = Modifier.padding(start = 40.dp, top = 12.dp)) {
             tabNames.forEachIndexed { i, name ->
-                Tab(selected = i == current, onFocus = { selected = i }, onClick = { selected = i }) {
+                Tab(
+                    selected = i == current,
+                    onFocus = { vm.selectTab(i) },
+                    onClick = { vm.selectTab(i) },
+                    modifier = if (i == current) Modifier.focusRequester(tabFocus) else Modifier,
+                ) {
                     Text(name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
                 }
             }
         }
+
+        LaunchedEffect(Unit) { runCatching { tabFocus.requestFocus() } }
 
         if (current == categories.size) {
             ContinueWatching(recent, onResume)
