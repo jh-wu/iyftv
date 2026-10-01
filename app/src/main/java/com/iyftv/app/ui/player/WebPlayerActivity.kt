@@ -312,7 +312,7 @@ class WebPlayerActivity : ComponentActivity() {
             return super.dispatchKeyEvent(event)
         }
         // Bar hidden: OK pauses, left/right skip, any of them also brings up the bar.
-        val action: (() -> Unit)? = when (code) {
+        val action: () -> Unit = when (code) {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> ::togglePlay
             KeyEvent.KEYCODE_DPAD_RIGHT -> { { seekBy(10) } }
             KeyEvent.KEYCODE_DPAD_LEFT -> { { seekBy(-10) } }
