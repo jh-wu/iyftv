@@ -45,6 +45,9 @@ class WebPlayerAdsDeviceTest {
                     Log.i("WebPlayerDiag", s)
                 }
             }
+            // The site's ad clip may appear in at most one sample before it is skipped.
+            val adSamples = samples.count { it.contains("src\\\":\\\"http") }
+            assertTrue("ad clip stayed on screen in $adSamples samples", adSamples <= 1)
             val last = samples.last()
             assertTrue("episode lost its place on top: $last", last.contains("MAIN"))
             val mainEntry = Regex("\"[^\"]*MAIN\"").find(last)?.value.orEmpty()

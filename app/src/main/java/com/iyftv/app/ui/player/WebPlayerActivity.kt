@@ -420,7 +420,7 @@ class WebPlayerActivity : ComponentActivity() {
             "var src=x.currentSrc||x.src||'';if(/empty\\d*\\.mp4/.test(src))return;" +
             "var sc=x.readyState*10+(src?5:0)+(isFinite(x.duration)&&x.duration>60?20:0)+(x.paused?0:1);" +
             "if(sc>bs){bs=sc;b=x}});" +
-            "if(b&&isFinite(b.duration)&&b.duration>60&&b.readyState>=2){window.__iyftvMain=b;b.__iyftvSrc=b.currentSrc}" +
+            "if(b&&isFinite(b.duration)&&b.duration>60&&b.readyState>=2){window.__iyftvMain=b}" +
             "return b})()"
 
         private val PROBE_JS = """
@@ -458,7 +458,8 @@ class WebPlayerActivity : ComponentActivity() {
                   'height:100vh!important;max-width:none!important;max-height:none!important;z-index:2147483647!important;'+
                   'background:#000!important;object-fit:contain!important;transform:none!important}'+
                   'html.iyftv-clean body>:not(video.iyftv-full){display:none!important}'+
-                  'html.iyftv-clean video.iyftv-full{display:block!important;visibility:visible!important;opacity:1!important}';
+                  'html.iyftv-clean video.iyftv-full{display:block!important;visibility:visible!important;opacity:1!important}'+
+                  'html.iyftv-clean video.iyftv-full.iyftv-ad{opacity:0!important}';
                 document.head.appendChild(s);
               }
               if(v.parentNode!==document.body){ document.body.appendChild(v); }
@@ -479,9 +480,26 @@ class WebPlayerActivity : ComponentActivity() {
                   x.classList.remove('iyftv-full');
                   if(!x.paused&&isFinite(x.duration)&&x.duration>0){ try{x.currentTime=x.duration}catch(e){} }
                 });
-                // An ad played in the episode's own element: skip it too.
-                if(v.__iyftvSrc&&v.currentSrc!==v.__iyftvSrc&&isFinite(v.duration)&&v.duration<120){ try{v.currentTime=v.duration}catch(e){} }
-                if(v.currentSrc===v.__iyftvSrc&&v.muted) v.muted=false;
+                // Mid-way the site plays its ad clip (a plain .mp4) in the episode's own
+                // element; the episode itself streams from a blob: URL. Hide and silence the
+                // ad and skip it to its end the moment it loads.
+                if(!v.__iyftvHooked){
+                  v.__iyftvHooked=true;
+                  var check=function(){
+                    var ad=v.currentSrc&&v.currentSrc.indexOf('blob:')!==0;
+                    v.classList.toggle('iyftv-ad',!!ad);
+                    if(ad){
+                      if(!v.muted){ v.muted=true; v.__iyftvAdMuted=true; }
+                      if(isFinite(v.duration)&&v.duration>0&&v.currentTime<v.duration-0.1){ try{v.currentTime=v.duration}catch(e){} }
+                    }else if(v.__iyftvAdMuted){ v.muted=false; v.__iyftvAdMuted=false; }
+                  };
+                  ['loadstart','loadedmetadata','durationchange','play','playing','timeupdate'].forEach(function(e){ v.addEventListener(e,check); });
+                  check();
+                }
+              }
+              // Before the episode starts, the site plays the same short ad clip: skip it too.
+              if(main!==v&&v.currentSrc&&v.currentSrc.indexOf('blob:')!==0&&isFinite(v.duration)&&v.duration<=60&&v.currentTime<v.duration-0.1){
+                try{v.currentTime=v.duration}catch(e){}
               }
               if(v.paused && !v.__iyftvPaused){ var p=v.play(); if(p&&p.catch) p.catch(function(){}); }
               return 'ok';
