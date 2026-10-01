@@ -74,14 +74,14 @@ class WebPlayerActivity : ComponentActivity() {
         web.evaluateJavascript(PROBE_JS) { lastState = it }
         if (!seeked && startAt > 0) {
             web.evaluateJavascript(
-                "(function(){var v=document.querySelector('video');if(v&&v.duration>${startAt / 1000 + 5}){v.currentTime=${startAt / 1000};return 1}return 0})()",
+                "(function(){var v="+PICK+";if(v&&v.duration>${startAt / 1000 + 5}){v.currentTime=${startAt / 1000};return 1}return 0})()",
             ) { if (it == "1") seeked = true }
         }
     }
 
     private fun save(videoKey: String, episodeKey: String) {
         web.evaluateJavascript(
-            "(function(){var v=document.querySelector('video');return v?[v.currentTime,v.duration]:null})()",
+            "(function(){var v="+PICK+";return v?[v.currentTime,v.duration]:null})()",
         ) { result ->
             val arr = runCatching { JSONArray(result) }.getOrNull() ?: return@evaluateJavascript
             val position = (arr.optDouble(0) * 1000).toLong()
@@ -110,11 +110,11 @@ class WebPlayerActivity : ComponentActivity() {
         val js = when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
             KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE ->
-                "(function(){var v=document.querySelector('video');if(!v)return;if(v.paused){v.__iyftvPaused=false;v.play()}else{v.__iyftvPaused=true;v.pause()}})()"
+                "(function(){var v="+PICK+";if(!v)return;if(v.paused){v.__iyftvPaused=false;v.play()}else{v.__iyftvPaused=true;v.pause()}})()"
             KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD ->
-                "(function(){var v=document.querySelector('video');if(v)v.currentTime+=10})()"
+                "(function(){var v="+PICK+";if(v)v.currentTime+=10})()"
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND ->
-                "(function(){var v=document.querySelector('video');if(v)v.currentTime-=10})()"
+                "(function(){var v="+PICK+";if(v)v.currentTime-=10})()"
             else -> null
         }
         if (js != null) {
@@ -147,11 +147,21 @@ class WebPlayerActivity : ComponentActivity() {
         /** What the page looked like at the last check, for tests and error reports. */
         @Volatile var lastState: String? = null
 
+        /**
+         * The episode's video element. The page holds several, including an empty
+         * placeholder clip, so take the one that has real media loaded.
+         */
+        private const val PICK = "(function(){var b=null,bs=-1;[].forEach.call(document.querySelectorAll('video'),function(x){" +
+            "var src=x.currentSrc||x.src||'';if(/empty\\d*\\.mp4/.test(src))return;" +
+            "var sc=x.readyState*10+(src?5:0)+(isFinite(x.duration)&&x.duration>60?20:0)+(x.paused?0:1);" +
+            "if(sc>bs){bs=sc;b=x}});return b})()"
+
         private val PROBE_JS = """
             (function(){
-              var v=document.querySelector('video');
+              var v=$PICK;
               var f=[].map.call(document.querySelectorAll('iframe'),function(x){return x.src}).slice(0,3);
               var r={url:location.href,title:document.title,videos:document.querySelectorAll('video').length,iframes:f};
+              r.all=[].map.call(document.querySelectorAll('video'),function(x){return (x.currentSrc||x.src||'').slice(-40)+' '+x.readyState+' '+x.currentTime.toFixed(1)});
               if(v){r.src=(v.currentSrc||v.src||'').slice(0,120);r.paused=v.paused;r.t=v.currentTime;r.d=String(v.duration);
                 r.ready=v.readyState;r.net=v.networkState;r.err=v.error?v.error.code+' '+v.error.message:null;}
               return JSON.stringify(r);
@@ -168,7 +178,7 @@ class WebPlayerActivity : ComponentActivity() {
 
         private val FULLSCREEN_JS = """
             (function(){
-              var v=document.querySelector('video'); if(!v) return 'none';
+              var v=$PICK; if(!v) return 'none';
               if(!document.getElementById('iyftv-style')){
                 var s=document.createElement('style'); s.id='iyftv-style';
                 s.textContent='html,body{overflow:hidden!important;background:#000!important}'+
