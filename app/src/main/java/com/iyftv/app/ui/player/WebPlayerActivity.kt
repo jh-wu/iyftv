@@ -235,11 +235,10 @@ class WebPlayerActivity : ComponentActivity() {
             val t = arr.optDouble(0).takeIf { it.isFinite() } ?: 0.0
             val d = arr.optDouble(1).takeIf { it.isFinite() } ?: 0.0
             val paused = arr.optBoolean(2)
-            val ended = arr.optBoolean(3)
             // The site's ad is hidden; say why the screen is briefly black.
             adLabel.visibility = if (arr.optBoolean(4)) View.VISIBLE else View.GONE
             // The episode itself (not the short ad before it) has finished.
-            if (d >= 60 && (ended || t >= d - 0.5) && !leaving) {
+            if (d >= 60 && t >= d - 2 && !leaving) {
                 switchEpisode(1)
                 return@evaluateJavascript
             }
@@ -492,50 +491,37 @@ class WebPlayerActivity : ComponentActivity() {
                   'html.iyftv-clean video.iyftv-full.iyftv-ad{opacity:0!important}';
                 document.head.appendChild(s);
               }
-              // Mid-way the site takes the episode off its video element (detaching the stream),
-              // plays its 20s ad clip there and puts the episode back on a timer. Refuse to let
-              // go of the episode or take the ad, so the episode keeps playing from what is
-              // already buffered; when the site brings it back, carry on from where it really is.
+              // Before and mid-way through the episode the site plays its ad clip in the video
+              // element and puts the episode back after a 20s timer, however the clip itself
+              // goes. Timers the page starts just as an ad begins are run 20 times faster.
               if(!window.__iyftvSrcHook){
                 window.__iyftvSrcHook=true;
-                var note=function(el,what){
+                var note=function(what){
                   var l=window.__iyftvLog=window.__iyftvLog||[];
-                  l.push(Math.round(performance.now()/100)/10+' '+what+' t'+el.currentTime.toFixed(1)+' rs'+el.readyState);
+                  l.push(Math.round(performance.now()/100)/10+' '+what);
                   if(l.length>40) l.shift();
                 };
-                var isAd=function(u){ return /global-cdn\.me\/.*\.mp4/.test(String(u)); };
-                var keep=function(el,u){
-                  if(el!==window.__iyftvMain) return false;
-                  var playing=String(el.currentSrc).indexOf('blob:')===0;
-                  if(!(isAd(u)||(u===''&&playing))) return false;
-                  if(!window.__iyftvSkip||window.__iyftvSkip.src!==el.currentSrc)
-                    window.__iyftvSkip={src:el.currentSrc,t:el.currentTime,at:Date.now()};
-                  return true;
+                window.__iyftvNote=note;
+                var adAt=0;
+                var saw=function(el,u){
+                  if(/global-cdn\.me\/.*\.mp4/.test(String(u))){ adAt=Date.now(); note('ad src'); }
                 };
                 var d=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'src');
                 Object.defineProperty(HTMLMediaElement.prototype,'src',{configurable:true,enumerable:d.enumerable,get:d.get,
-                  set:function(u){ var k=keep(this,u); if(this===window.__iyftvMain) note(this,(k?'refused ':'')+'src='+String(u).slice(-30)); if(!k) d.set.call(this,u); }});
+                  set:function(u){ saw(this,u); d.set.call(this,u); }});
                 var sa=Element.prototype.setAttribute;
                 Element.prototype.setAttribute=function(n,u){
-                  if(String(n).toLowerCase()==='src'&&this instanceof HTMLMediaElement){
-                    var k=keep(this,u); if(this===window.__iyftvMain) note(this,(k?'refused ':'')+'setAttribute src='+String(u).slice(-30)); if(k) return;
-                  }
+                  if(this instanceof HTMLMediaElement&&String(n).toLowerCase()==='src') saw(this,u);
                   return sa.apply(this,arguments);
                 };
-                var ra=Element.prototype.removeAttribute;
-                Element.prototype.removeAttribute=function(n){
-                  if(String(n).toLowerCase()==='src'&&this instanceof HTMLMediaElement){
-                    var k=keep(this,''); if(this===window.__iyftvMain) note(this,(k?'refused ':'')+'removeAttribute src'); if(k) return;
-                  }
-                  return ra.apply(this,arguments);
+                var fast=function(ms){
+                  ms=Number(ms)||0;
+                  if(adAt&&Date.now()-adAt<3000&&ms>=500&&ms<=30000){ note('timer '+ms+' sped up'); return Math.max(20,ms/20); }
+                  return ms;
                 };
-                var ld=HTMLMediaElement.prototype.load;
-                HTMLMediaElement.prototype.load=function(){
-                  var k=window.__iyftvSkip, refuse=this===window.__iyftvMain&&k&&this.currentSrc===k.src;
-                  if(this===window.__iyftvMain) note(this,(refuse?'refused ':'')+'load');
-                  if(refuse) return;
-                  return ld.apply(this,arguments);
-                };
+                var si=window.setInterval, st=window.setTimeout;
+                window.setInterval=function(f,ms){ var a=[].slice.call(arguments); a[1]=fast(ms); return si.apply(window,a); };
+                window.setTimeout=function(f,ms){ var a=[].slice.call(arguments); a[1]=fast(ms); return st.apply(window,a); };
               }
               if(v===window.__iyftvMain&&!v.__iyftvNoted){
                 v.__iyftvNoted=true;
@@ -580,12 +566,6 @@ class WebPlayerActivity : ComponentActivity() {
                     if(ad){
                       if(isFinite(v.duration)&&v.duration>0&&v.currentTime<v.duration-0.1){ try{v.currentTime=v.duration}catch(e){} }
                     }else{
-                      var k=window.__iyftvSkip;
-                      if(k&&v.currentSrc!==k.src&&v.readyState>=1){
-                        window.__iyftvSkip=null;
-                        var to=k.t+(Date.now()-k.at)/1000;
-                        if(Date.now()-k.at<120000&&v.currentTime<to-3){ try{v.currentTime=to}catch(e){} }
-                      }
                       if(v.muted) v.muted=false;
                       if(v.volume<1) v.volume=1;
                     }
