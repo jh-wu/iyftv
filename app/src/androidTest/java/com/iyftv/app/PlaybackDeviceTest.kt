@@ -9,6 +9,10 @@ import com.iyftv.app.data.model.Stream
 import com.iyftv.app.ui.player.StreamPlayer
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
+import com.google.android.gms.net.CronetProviderInstaller
+import com.google.android.gms.tasks.Tasks
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -22,6 +26,19 @@ class PlaybackDeviceTest {
     @Test fun playsSearchedSeries() = runBlocking {
         val hit = app.source.search("沉默的证人", 1).items.first()
         playFirstEpisode(hit.key, "search 沉默的证人 → ${hit.title}")
+    }
+
+    /** Video requests through Chrome's network stack (Cronet), the first thing the player tries. */
+    @Test fun playsThroughCronet() = runBlocking {
+        val engine = runCatching { Tasks.await(CronetProviderInstaller.installProvider(app)) }
+            .let { StreamPlayer.cronetEngine(app) }
+        assumeTrue("Cronet not available on this device", engine != null)
+        val tv = app.source.list(app.source.categories().first { it.name == "电视剧" }, 1).items.first()
+        val detail = app.source.detail(tv.key)
+        val stream = app.source.stream(detail.key, detail.episodes.first().key)
+        val profiles = StreamPlayer.headerProfiles(app, stream.headers)
+        assertTrue("first profile should use Cronet", profiles.current.cronet)
+        assertNull(play(stream, profiles))
     }
 
     @Test fun playsFirstTvSeries() = runBlocking {
@@ -38,11 +55,11 @@ class PlaybackDeviceTest {
     }
 
     /** Null once playback has run for a few seconds, otherwise what went wrong. */
-    private fun play(stream: Stream): String? {
+    private fun play(stream: Stream, profiles: StreamPlayer.HeaderProfiles? = null): String? {
         var player: ExoPlayer? = null
         var error: PlaybackException? = null
         instrumentation.runOnMainSync {
-            player = StreamPlayer.create(app, app.http, stream.headers).apply {
+            player = (if (profiles != null) StreamPlayer.create(app, app.http, profiles) else StreamPlayer.create(app, app.http, stream.headers)).apply {
                 addListener(object : Player.Listener {
                     override fun onPlayerError(e: PlaybackException) { error = e }
                 })

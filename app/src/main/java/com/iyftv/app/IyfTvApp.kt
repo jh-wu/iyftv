@@ -10,6 +10,7 @@ import com.iyftv.app.data.iyf.WebViewCookieJar
 import com.iyftv.app.data.iyf.WebViewKeyFetcher
 import com.iyftv.app.data.iyf.WebViewStreamSniffer
 import com.iyftv.app.data.update.UpdateChecker
+import com.google.android.gms.net.CronetProviderInstaller
 import okhttp3.CookieJar
 import okhttp3.Dns
 import okhttp3.OkHttpClient
@@ -31,6 +32,8 @@ class IyfTvApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Fetches Chrome's network stack (Cronet) from Play services for the video player.
+        runCatching { CronetProviderInstaller.installProvider(this) }
         http = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
