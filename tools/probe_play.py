@@ -118,3 +118,32 @@ for src in scripts:
     for k in ["video/play", "usersign", "isMasterSupport", "region=", "region:", "vCustomParameter"]:
         for m in list(re.finditer(re.escape(k), js))[:3]:
             print(f"--- {src} {k}:", js[max(0, m.start() - 400):m.start() + 300].replace("\n", " "))
+
+section("which video host the play API hands out, per line setting and on repeat")
+def hosts(extra):
+    r = api("/v3/video/play", f"cinema=1&id={ep}&a=0&lang=none&usersign=1&region=GL.&device=1&isMasterSupport=1{extra}")
+    found = []
+    walk_urls = []
+    def w(o):
+        if isinstance(o, dict):
+            if o.get("isHls") is True and isinstance(o.get("result"), str):
+                walk_urls.append(o["result"])
+            for v in o.values():
+                w(v)
+        elif isinstance(o, list):
+            for v in o:
+                w(v)
+    w(r)
+    return sorted({urllib.parse.urlparse(u).netloc for u in walk_urls})
+for extra in ["", "", "", "&sharpness=480&line=0", "&line=1", "&line=2", "&line=3", "&line=4", "&line=auto"]:
+    print(f"play{extra or ' (default)'} -> {hosts(extra)}")
+
+section("line / host settings in the site")
+for m in list(re.finditer(r'"line[^"]*"\s*:\s*[^,}]{0,80}', h))[:10]:
+    print("home:", m.group(0))
+for src in scripts:
+    _, _, js = fetch(urllib.parse.urljoin(WEB + "/", src))
+    js = text(js)
+    for k in ["line:", ".line=", "lines", "SetConfig", "sharpness:", "vip/", "cdnHost", "replace(/https?"]:
+        for m in list(re.finditer(re.escape(k), js))[:4]:
+            print(f"--- {src} {k}:", js[max(0, m.start() - 300):m.start() + 300].replace("\n", " "))
