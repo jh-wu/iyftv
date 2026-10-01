@@ -438,12 +438,13 @@ class WebPlayerActivity : ComponentActivity() {
               var v=$PICK;
               var f=[].map.call(document.querySelectorAll('iframe'),function(x){return x.src}).slice(0,3);
               var r={url:location.href,title:document.title,videos:document.querySelectorAll('video').length,iframes:f};
-              r.all=[].map.call(document.querySelectorAll('video'),function(x){return (x.currentSrc||x.src||'').slice(-50)+' rs'+x.readyState+' t'+x.currentTime.toFixed(1)+'/'+x.duration+(x.paused?' paused':'')+(x.muted?' muted':'')+(x===window.__iyftvMain?' MAIN':'')});
+              r.all=[].map.call(document.querySelectorAll('video'),function(x){return (x.currentSrc||x.src||'').slice(-50)+' rs'+x.readyState+' t'+x.currentTime.toFixed(1)+'/'+x.duration+(x.paused?' paused':'')+(x.muted?' muted':'')+' vol'+x.volume+(x===window.__iyftvMain?' MAIN':'')});
               var top=document.elementFromPoint(innerWidth/2,innerHeight/2);
               r.top=top?(top.tagName+'#'+top.id+'.'+String(top.className).slice(0,60)):null;
               r.fs=document.fullscreenElement?document.fullscreenElement.tagName:null;
               r.body=[].map.call(document.body.children,function(x){return x.tagName+'.'+String(x.className).slice(0,30)+(getComputedStyle(x).display==='none'?'(hidden)':'')}).slice(0,15);
               r.clean=document.documentElement.classList.contains('iyftv-clean');
+              try{r.ls=Object.keys(localStorage).filter(function(k){return /vol|mute|sound|player|xg|dplayer|art/i.test(k)}).map(function(k){return k+'='+String(localStorage.getItem(k)).slice(0,80)})}catch(e){r.ls=String(e)}
               if(v){r.src=(v.currentSrc||v.src||'').slice(0,120);r.paused=v.paused;r.t=v.currentTime;r.d=String(v.duration);
                 r.ready=v.readyState;r.net=v.networkState;r.err=v.error?v.error.code+' '+v.error.message:null;}
               return JSON.stringify(r);
@@ -499,12 +500,15 @@ class WebPlayerActivity : ComponentActivity() {
                     var ad=v.currentSrc&&v.currentSrc.indexOf('blob:')!==0;
                     v.classList.toggle('iyftv-ad',!!ad);
                     window.__iyftvAd=!!ad;
-                    // The site restores its own mute state after an ad, so the episode is
-                    // unmuted every time rather than only when this script muted it.
+                    // The ad is skipped to its end, so it makes no sound and is never muted:
+                    // the site saves the player's mute and volume and would bring them back
+                    // on the episode. The episode always plays at full volume.
                     if(ad){
-                      if(!v.muted) v.muted=true;
                       if(isFinite(v.duration)&&v.duration>0&&v.currentTime<v.duration-0.1){ try{v.currentTime=v.duration}catch(e){} }
-                    }else if(v.muted){ v.muted=false; }
+                    }else{
+                      if(v.muted) v.muted=false;
+                      if(v.volume<1) v.volume=1;
+                    }
                   };
                   ['loadstart','loadedmetadata','durationchange','play','playing','timeupdate'].forEach(function(e){ v.addEventListener(e,check); });
                   check();

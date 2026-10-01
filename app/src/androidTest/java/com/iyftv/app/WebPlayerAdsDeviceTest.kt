@@ -37,8 +37,8 @@ class WebPlayerAdsDeviceTest {
                 if (state?.contains("MAIN") == true) break
             }
             assertTrue("episode never started: $state", state?.contains("MAIN") == true)
-            // Jump into the middle, then watch.
-            scenario.onActivity { it.runScript("(function(){var v=window.__iyftvMain;if(v)v.currentTime=v.duration*0.4})()") }
+            // Jump into the middle with the sound off, as the site leaves it after an ad, then watch.
+            scenario.onActivity { it.runScript("(function(){var v=window.__iyftvMain;if(v)v.currentTime=v.duration*0.4;v.muted=true;v.volume=0})()") }
             val samples = mutableListOf<String>()
             repeat(60) {
                 delay(3_000)
@@ -54,6 +54,7 @@ class WebPlayerAdsDeviceTest {
             assertTrue("episode lost its place on top: ${samples.last()}", last.isNotEmpty())
             assertFalse("episode is still on the ad clip: $last", last.contains(".mp4 "))
             assertFalse("episode is muted: $last", last.contains(" muted"))
+            assertTrue("episode is not at full volume: $last", last.contains(" vol1 "))
         }
     }
 
