@@ -12,8 +12,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.tv.material3.Surface
-import com.iyftv.app.data.model.Category
-import com.iyftv.app.ui.category.CategoryScreen
 import com.iyftv.app.ui.category.CategoryViewModel
 import com.iyftv.app.ui.common.IyfTheme
 import com.iyftv.app.ui.detail.DetailScreen
@@ -48,26 +46,16 @@ class MainActivity : ComponentActivity() {
                         composable("home") {
                             HomeScreen(
                                 vm = viewModel { HomeViewModel(app.source, app.history) },
+                                categoryViewModel = { c -> viewModel(key = "category-${c.id}") { CategoryViewModel(app.source, c) } },
                                 onOpenVideo = openVideo,
                                 onResume = { play(it.videoKey, it.episodeKey) },
-                                onOpenCategory = { c -> nav.navigate("category/${Uri.encode(c.id)}/${Uri.encode(c.name)}") },
                                 onSearch = { nav.navigate("search") },
                                 onHistory = { nav.navigate("history") },
                                 onCheckUpdate = updates::checkNow,
-                                version = "build ${BuildConfig.VERSION_CODE}",
-                            )
-                        }
-                        composable("category/{id}/{name}") { entry ->
-                            val id = entry.arguments?.getString("id").orEmpty()
-                            val name = entry.arguments?.getString("name").orEmpty()
-                            CategoryScreen(
-                                title = name,
-                                vm = viewModel { CategoryViewModel(app.source, Category(id, name)) },
-                                onOpenVideo = openVideo,
                             )
                         }
                         composable("search") {
-                            SearchScreen(vm = viewModel { SearchViewModel(app.source) }, onOpenVideo = openVideo)
+                            SearchScreen(vm = viewModel { SearchViewModel(app.source, app.searchHistory) }, onOpenVideo = openVideo)
                         }
                         composable("history") {
                             HistoryScreen(vm = viewModel { HistoryViewModel(app.history) }, onOpen = { openVideo(it.videoKey) })

@@ -2,10 +2,15 @@ package com.iyftv.app.ui.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -18,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -25,26 +31,38 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Icon
+import androidx.tv.material3.IconButton
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.OutlinedButton
+import androidx.tv.material3.Text
 import com.iyftv.app.data.VideoSource
+import com.iyftv.app.data.history.SearchHistory
+import com.iyftv.app.ui.common.AppIcons
 import com.iyftv.app.ui.common.PagedGridViewModel
 import com.iyftv.app.ui.common.VideoGrid
 
-class SearchViewModel(private val source: VideoSource) : PagedGridViewModel(null) {
+class SearchViewModel(private val source: VideoSource, private val history: SearchHistory) : PagedGridViewModel(null) {
     var lastQuery = ""
         private set
 
+    val recent = history.terms
+
     fun search(query: String) {
         val q = query.trim()
+        if (q.isNotEmpty()) history.add(q)
         if (q == lastQuery) return
         lastQuery = q
         reset(if (q.isEmpty()) null else { page -> source.search(q, page) })
     }
+
+    fun clearHistory() = history.clear()
 }
 
 @Composable
 fun SearchScreen(vm: SearchViewModel, onOpenVideo: (String) -> Unit) {
     val state by vm.state.collectAsState()
+    val recent by vm.recent.collectAsState()
     var query by rememberSaveable { mutableStateOf("") }
     var focused by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
@@ -72,6 +90,21 @@ fun SearchScreen(vm: SearchViewModel, onOpenVideo: (String) -> Unit) {
                 )
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         )
+        if (recent.isNotEmpty()) {
+            Row(
+                Modifier.padding(start = 48.dp, top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("搜索记录", style = MaterialTheme.typography.titleSmall)
+                IconButton(onClick = vm::clearHistory) { Icon(AppIcons.ClearHistory, contentDescription = "清除搜索记录") }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(end = 48.dp)) {
+                    items(recent, key = { it }) { term ->
+                        OutlinedButton(onClick = { query = term; vm.search(term) }) { Text(term) }
+                    }
+                }
+            }
+        }
         VideoGrid(
             state,
             onOpen = { onOpenVideo(it.key) },

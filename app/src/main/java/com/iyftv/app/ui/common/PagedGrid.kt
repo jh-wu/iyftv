@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
@@ -77,13 +78,10 @@ fun VideoGrid(
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
     emptyText: String = "没有内容",
+    header: (LazyGridScope.() -> Unit)? = null,
 ) {
-    if (state.items.isEmpty()) {
-        when {
-            state.error != null -> Message("加载失败：${state.error}", onRetry = onLoadMore)
-            state.loading -> Message("加载中…")
-            else -> Message(emptyText)
-        }
+    if (state.items.isEmpty() && header == null) {
+        EmptyGrid(state, onLoadMore, emptyText)
         return
     }
     LazyVerticalGrid(
@@ -93,14 +91,25 @@ fun VideoGrid(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        header?.invoke(this)
+        if (state.items.isEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) { EmptyGrid(state, onLoadMore, emptyText) }
+        }
         itemsIndexed(state.items, key = { _, v -> v.key }) { index, v ->
             if (index >= state.items.size - 12) {
                 LaunchedEffect(state.items.size) { onLoadMore() }
             }
             PosterCard(v.title, v.imageUrl, v.subtitle, onClick = { onOpen(v) })
         }
-        if (state.error != null) {
+        if (state.error != null && state.items.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) { Message("加载失败：${state.error}", onRetry = onLoadMore) }
         }
     }
+}
+
+@Composable
+private fun EmptyGrid(state: GridState, onRetry: () -> Unit, emptyText: String) = when {
+    state.error != null -> Message("加载失败：${state.error}", onRetry = onRetry)
+    state.loading -> Message("加载中…")
+    else -> Message(emptyText)
 }
