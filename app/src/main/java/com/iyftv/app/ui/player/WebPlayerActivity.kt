@@ -51,6 +51,7 @@ class WebPlayerActivity : ComponentActivity() {
     private var leaving = false
 
     private lateinit var controls: LinearLayout
+    private lateinit var adLabel: TextView
     private lateinit var titleView: TextView
     private lateinit var timeView: TextView
     private lateinit var durationView: TextView
@@ -87,8 +88,15 @@ class WebPlayerActivity : ComponentActivity() {
         }
         android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(web, true)
         controls = buildControls()
+        adLabel = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            textSize = 18f
+            text = "已跳过广告，马上继续播放…"
+            visibility = View.GONE
+        }
         setContentView(FrameLayout(this).apply {
             addView(web, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+            addView(adLabel, FrameLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT, Gravity.CENTER))
             addView(controls, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.BOTTOM))
         })
         web.loadUrl(IyfConfig.playPageUrl(videoKey, episodeKey))
@@ -210,13 +218,15 @@ class WebPlayerActivity : ComponentActivity() {
     /** Reads the video's position and state into the control bar; moves on when an episode ends. */
     private fun refreshControls() {
         web.evaluateJavascript(
-            "(function(){var v="+PICK+";return v?[v.currentTime,v.duration,v.paused,v.ended]:null})()",
+            "(function(){var v="+PICK+";return v?[v.currentTime,v.duration,v.paused,v.ended,!!window.__iyftvAd]:null})()",
         ) { result ->
             val arr = runCatching { JSONArray(result) }.getOrNull() ?: return@evaluateJavascript
             val t = arr.optDouble(0).takeIf { it.isFinite() } ?: 0.0
             val d = arr.optDouble(1).takeIf { it.isFinite() } ?: 0.0
             val paused = arr.optBoolean(2)
             val ended = arr.optBoolean(3)
+            // The site's ad is hidden; say why the screen is briefly black.
+            adLabel.visibility = if (arr.optBoolean(4)) View.VISIBLE else View.GONE
             // The episode itself (not the short ad before it) has finished.
             if (d >= 60 && (ended || t >= d - 0.5) && !leaving) {
                 switchEpisode(1)
@@ -488,10 +498,13 @@ class WebPlayerActivity : ComponentActivity() {
                   var check=function(){
                     var ad=v.currentSrc&&v.currentSrc.indexOf('blob:')!==0;
                     v.classList.toggle('iyftv-ad',!!ad);
+                    window.__iyftvAd=!!ad;
+                    // The site restores its own mute state after an ad, so the episode is
+                    // unmuted every time rather than only when this script muted it.
                     if(ad){
-                      if(!v.muted){ v.muted=true; v.__iyftvAdMuted=true; }
+                      if(!v.muted) v.muted=true;
                       if(isFinite(v.duration)&&v.duration>0&&v.currentTime<v.duration-0.1){ try{v.currentTime=v.duration}catch(e){} }
-                    }else if(v.__iyftvAdMuted){ v.muted=false; v.__iyftvAdMuted=false; }
+                    }else if(v.muted){ v.muted=false; }
                   };
                   ['loadstart','loadedmetadata','durationchange','play','playing','timeupdate'].forEach(function(e){ v.addEventListener(e,check); });
                   check();

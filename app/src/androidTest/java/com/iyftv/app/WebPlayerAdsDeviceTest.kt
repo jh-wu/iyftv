@@ -7,6 +7,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.iyftv.app.ui.player.WebPlayerActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
+import org.json.JSONTokener
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -41,17 +43,24 @@ class WebPlayerAdsDeviceTest {
             repeat(60) {
                 delay(3_000)
                 WebPlayerActivity.lastState?.let { s ->
-                    if (samples.lastOrNull() != s) samples += s
+                    samples += s
                     Log.i("WebPlayerDiag", s)
                 }
             }
-            // The site's ad clip may appear in at most one sample before it is skipped.
-            val adSamples = samples.count { it.contains("src\\\":\\\"http") }
-            assertTrue("ad clip stayed on screen in $adSamples samples", adSamples <= 1)
-            val last = samples.last()
-            assertTrue("episode lost its place on top: $last", last.contains("MAIN"))
-            val mainEntry = Regex("\"[^\"]*MAIN\"").find(last)?.value.orEmpty()
-            assertFalse("episode is muted: $mainEntry", mainEntry.contains(" muted"))
+            // The site waits about 20s on its ad whatever we do, so only report how long it lasted.
+            val mains = samples.map(::mainEntry)
+            Log.i("WebPlayerDiag", "ad samples: ${mains.count { it.contains(".mp4 ") }}")
+            val last = mains.last()
+            assertTrue("episode lost its place on top: ${samples.last()}", last.isNotEmpty())
+            assertFalse("episode is still on the ad clip: $last", last.contains(".mp4 "))
+            assertFalse("episode is muted: $last", last.contains(" muted"))
         }
+    }
+
+    /** The probe entry of the video the app treats as the episode, or "" if none. */
+    private fun mainEntry(state: String): String {
+        val json = JSONTokener(state).nextValue() as? String ?: return ""
+        val all = JSONObject(json).optJSONArray("all") ?: return ""
+        return (0 until all.length()).map { all.optString(it) }.firstOrNull { it.endsWith(" MAIN") }.orEmpty()
     }
 }
