@@ -103,3 +103,18 @@ def follow(url, depth=0):
 
 for u in urls[:2]:
     follow(u)
+
+section("how the web client builds the play request")
+_, _, homepage = fetch(WEB + "/")
+h = text(homepage)
+for k in ["region", "country", "ipAddress", "clientIp", "\"ip\"", "geo", "area"]:
+    for m in list(re.finditer(k, h))[:3]:
+        print(f"home {k}:", h[max(0, m.start() - 150):m.start() + 200].replace("\n", " "))
+scripts = re.findall(r'<script[^>]*src="([^"]+\.js)"', h)
+print("scripts:", scripts)
+for src in scripts:
+    _, _, js = fetch(urllib.parse.urljoin(WEB + "/", src))
+    js = text(js)
+    for k in ["video/play", "usersign", "isMasterSupport", "region=", "region:", "vCustomParameter"]:
+        for m in list(re.finditer(re.escape(k), js))[:3]:
+            print(f"--- {src} {k}:", js[max(0, m.start() - 400):m.start() + 300].replace("\n", " "))

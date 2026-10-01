@@ -58,7 +58,7 @@ class PlaybackDeviceTest {
                 var position = 0L
                 var state = 0
                 instrumentation.runOnMainSync { position = player!!.currentPosition; state = player!!.playbackState }
-                error?.let { return StreamPlayer.describe(it) }
+                error?.let { return listOfNotNull(StreamPlayer.describe(it), StreamPlayer.httpDetails(it)).joinToString("\n") }
                 if (position > 3_000) return null
                 if (state == Player.STATE_ENDED) return "ended at $position ms"
                 Thread.sleep(500)

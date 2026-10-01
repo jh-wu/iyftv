@@ -5,7 +5,13 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
-import android.widget.Toast
+import android.graphics.Color
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.annotation.OptIn
 import androidx.lifecycle.lifecycleScope
@@ -32,6 +38,7 @@ class PlayerActivity : ComponentActivity() {
 
     private val app get() = application as IyfTvApp
     private lateinit var playerView: PlayerView
+    private lateinit var errorView: TextView
     private var player: ExoPlayer? = null
     private var detail: VideoDetail? = null
     private var episodeIndex = 0
@@ -47,7 +54,17 @@ class PlayerActivity : ComponentActivity() {
             useController = true
             keepScreenOn = true
         }
-        setContentView(playerView)
+        errorView = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            textSize = 16f
+            setBackgroundColor(0xE0000000.toInt())
+            setPadding(48, 32, 48, 32)
+            visibility = View.GONE
+        }
+        setContentView(FrameLayout(this).apply {
+            addView(playerView, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+            addView(errorView, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.BOTTOM))
+        })
 
         val videoKey = intent.getStringExtra(EXTRA_VIDEO) ?: return finish()
         val requestedEpisode = intent.getStringExtra(EXTRA_EPISODE)
@@ -88,6 +105,7 @@ class PlayerActivity : ComponentActivity() {
                 newPlayer.addListener(listener)
             }
 
+        errorView.visibility = View.GONE
         p.setMediaItem(StreamPlayer.mediaItem(stream, "${d.title} ${ep.name}"), startMs)
         p.prepare()
         p.playWhenReady = true
@@ -163,7 +181,10 @@ class PlayerActivity : ComponentActivity() {
 
     private fun fail(e: Throwable) {
         Log.w("PlayerActivity", "playback failed", e)
-        Toast.makeText(this, "播放失败：${StreamPlayer.describe(e)}", Toast.LENGTH_LONG).show()
+        val details = StreamPlayer.httpDetails(e)
+        errorView.text = listOfNotNull("播放失败：${StreamPlayer.describe(e)}", details, "按返回键退出")
+            .joinToString("\n\n")
+        errorView.visibility = View.VISIBLE
     }
 
     override fun onStart() {

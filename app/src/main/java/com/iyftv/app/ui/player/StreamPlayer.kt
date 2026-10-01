@@ -6,6 +6,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -29,6 +30,28 @@ object StreamPlayer {
             .apply { if (stream.url.contains(".m3u8")) setMimeType(MimeTypes.APPLICATION_M3U8) }
             .apply { if (title != null) setMediaMetadata(MediaMetadata.Builder().setTitle(title).build()) }
             .build()
+
+    /**
+     * What the server said when it refused a request: status, which URL (with the query
+     * values that tie a link to an IP or region), and the start of the reply body.
+     */
+    fun httpDetails(e: Throwable): String? {
+        val http = generateSequence(e) { it.cause }
+            .filterIsInstance<HttpDataSource.InvalidResponseCodeException>().firstOrNull() ?: return null
+        val uri = http.dataSpec.uri
+        val tied = uri.queryParameterNames.filter { it in setOf("vCustomParameter", "vendtime", "lb") }
+            .joinToString(" ") { "$it=${uri.getQueryParameter(it)}" }
+        val headers = http.headerFields.filterKeys { it != null && it.lowercase() in setOf("server", "content-type", "via", "x-cache", "cf-ray") }
+            .entries.joinToString(" ") { "${it.key}: ${it.value.joinToString()}" }
+        val body = http.responseBody.decodeToString().replace(Regex("\\s+"), " ").trim().take(300)
+        return listOf(
+            "HTTP ${http.responseCode} ${http.responseMessage.orEmpty()}".trim(),
+            "${uri.host}${uri.path}",
+            tied,
+            headers,
+            body.ifEmpty { "(empty body)" },
+        ).filter { it.isNotBlank() }.joinToString("\n")
+    }
 
     /** The error with its whole cause chain, so a TV toast says more than "Source error". */
     fun describe(e: Throwable): String = generateSequence(e) { it.cause }.take(4)
