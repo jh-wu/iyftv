@@ -53,6 +53,8 @@ jobs:
         run: python3 tools/probe_site.py probe-out
       - name: Follow a title from search to its video segments
         run: python3 tools/probe_play.py "沉默的证人" || true
+      - name: Scores and list filters the site offers
+        run: python3 tools/probe_filters.py || true
       - name: Run the app's site client against iyf.tv
         run: |
           status=0; IYF_LIVE=1 ./gradlew testDebugUnitTest --tests '*LiveSiteTest*' -q || status=$?
