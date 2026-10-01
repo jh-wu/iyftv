@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -36,6 +38,7 @@ fun PosterCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     progress: Float? = null,
+    score: String? = null,
 ) {
     Column(modifier.width(CardWidth)) {
         Card(onClick = onClick, modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
@@ -46,6 +49,16 @@ fun PosterCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
+                if (score != null) {
+                    Text(
+                        score,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = ScoreColor,
+                        modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)
+                            .background(Color(0xCC000000), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
                 if (progress != null && progress > 0f) {
                     Box(
                         Modifier.align(Alignment.BottomStart).fillMaxWidth(progress).height(4.dp)
@@ -87,7 +100,7 @@ fun VideoRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             items(videos, key = { it.key }) { v ->
-                PosterCard(v.title, v.imageUrl, v.subtitle, onClick = { onOpen(v) })
+                PosterCard(v.title, v.imageUrl, v.subtitle, onClick = { onOpen(v) }, score = v.score)
             }
             if (onMore != null) {
                 item(key = "__more") {
@@ -121,3 +134,6 @@ fun formatTime(ms: Long): String {
     return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60)
     else "%d:%02d".format(s / 60, s % 60)
 }
+
+/** Amber, as the website shows scores. */
+val ScoreColor = Color(0xFFFFB400)

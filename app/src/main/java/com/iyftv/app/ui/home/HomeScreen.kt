@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
@@ -33,9 +33,13 @@ import androidx.tv.material3.Text
 import com.iyftv.app.data.history.WatchRecord
 import com.iyftv.app.data.model.Category
 import com.iyftv.app.ui.category.CategoryViewModel
+import com.iyftv.app.ui.category.FilterBar
 import com.iyftv.app.ui.common.AppIcons
+import com.iyftv.app.ui.common.CardWidth
+import com.iyftv.app.ui.common.Message
 import com.iyftv.app.ui.common.PosterCard
 import com.iyftv.app.ui.common.VideoGrid
+import com.iyftv.app.ui.common.formatTime
 
 @Composable
 fun HomeScreen(
@@ -66,34 +70,38 @@ fun HomeScreen(
         }
         if (categories.isEmpty()) return@Column
 
-        val current = selected.coerceIn(categories.indices)
+        // The six categories, then 继续观看 as the last tab.
+        val tabNames = categories.map { it.name } + CONTINUE_TAB
+        val current = selected.coerceIn(tabNames.indices)
         TabRow(selectedTabIndex = current, modifier = Modifier.padding(start = 40.dp, top = 12.dp)) {
-            categories.forEachIndexed { i, c ->
+            tabNames.forEachIndexed { i, name ->
                 Tab(selected = i == current, onFocus = { selected = i }, onClick = { selected = i }) {
-                    Text(c.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+                    Text(name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
                 }
             }
         }
 
+        if (current == categories.size) {
+            ContinueWatching(recent, onResume)
+            return@Column
+        }
         val category = categories[current]
         key(category.id) {
             val gridVm = categoryViewModel(category)
             val state by gridVm.state.collectAsState()
+            FilterBar(gridVm)
             VideoGrid(
                 state,
                 onOpen = { onOpenVideo(it.key) },
                 onLoadMore = gridVm::loadMore,
-                header = if (recent.isEmpty()) null else {
-                    {
-                        item(key = "continue", span = { GridItemSpan(maxLineSpan) }) {
-                            ContinueWatching(recent, onResume)
-                        }
-                    }
-                },
+                emptyText = if (gridVm.filter.collectAsState().value.isEmpty()) "没有内容" else "没有符合筛选条件的内容",
             )
         }
     }
 }
+
+private const val CONTINUE_TAB = "继续观看"
+
 
 @Composable
 private fun HeaderButton(icon: ImageVector, label: String, onClick: () -> Unit) {
@@ -102,15 +110,18 @@ private fun HeaderButton(icon: ImageVector, label: String, onClick: () -> Unit) 
 
 @Composable
 private fun ContinueWatching(recent: List<WatchRecord>, onResume: (WatchRecord) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("继续观看", style = MaterialTheme.typography.titleLarge)
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(end = 48.dp),
-        ) {
-            items(recent, key = { it.videoKey }) { r ->
-                PosterCard(r.title, r.imageUrl, r.episodeName, onClick = { onResume(r) }, progress = r.progress)
-            }
+    if (recent.isEmpty()) {
+        Message("还没有看到一半的节目")
+        return
+    }
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(CardWidth),
+        contentPadding = PaddingValues(horizontal = 48.dp, vertical = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
+        items(recent, key = { it.videoKey }) { r ->
+            PosterCard(r.title, r.imageUrl, "${r.episodeName} · ${formatTime(r.positionMs)}", onClick = { onResume(r) }, progress = r.progress)
         }
     }
 }

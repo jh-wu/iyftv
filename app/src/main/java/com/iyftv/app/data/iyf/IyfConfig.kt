@@ -1,6 +1,8 @@
 package com.iyftv.app.data.iyf
 
 import com.iyftv.app.data.model.Category
+import com.iyftv.app.data.model.FilterGroup
+import com.iyftv.app.data.model.ListFilter
 
 /**
  * Hosts, endpoints and catalog ids for iyf.tv, as used by its web client.
@@ -33,8 +35,22 @@ object IyfConfig {
         Category("0,1,8", "短剧"),
     )
 
-    fun listQuery(cid: String, page: Int) =
-        "cinema=1&page=$page&size=$PAGE_SIZE&orderby=0&desc=1&cid=$cid&isserial=-1&isIndex=-1&isfree=-1"
+    fun listQuery(cid: String, page: Int, filter: ListFilter = emptyMap()) =
+        "cinema=1&page=$page&size=$PAGE_SIZE&orderby=0&desc=1&cid=$cid&isserial=-1&isIndex=-1&isfree=-1" +
+            FILTERS.mapNotNull { g -> filter[g.id]?.let { "&${g.id}=${encode(it)}" } }.joinToString("")
+
+    /**
+     * The list filters the website offers (its /v3/list/GetSearchCondition), sent to
+     * list/Search as `region`, `language` and `year`.
+     */
+    val FILTERS = listOf(
+        FilterGroup("region", "全部地区", listOf("大陆", "香港", "台湾", "日本", "韩国", "欧美", "英国", "泰国", "其它")),
+        FilterGroup(
+            "language", "全部语言",
+            listOf("国语", "粤语", "英语", "韩语", "日语", "西班牙语", "法语", "德语", "意大利语", "泰国语", "其它"),
+        ),
+        FilterGroup("year", "全部年份", listOf("今年", "去年", "更早", "90年代", "80年代", "怀旧")),
+    )
 
     fun searchQuery(keyword: String, page: Int) =
         "tags=${encode(keyword)}&orderby=4&page=$page&size=$PAGE_SIZE&desc=1&isserial=-1"

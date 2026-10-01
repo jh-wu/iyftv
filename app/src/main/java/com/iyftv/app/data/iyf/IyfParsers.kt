@@ -44,6 +44,7 @@ object IyfParsers {
                     title = title,
                     imageUrl = absolute(image),
                     subtitle = o.str("lastName", "updateweekly", "regional", "year"),
+                    score = score(o.str("score")),
                 )
             }
             .distinctBy { it.key }
@@ -87,7 +88,14 @@ object IyfParsers {
                 info?.str("starring", "actor")?.let { "主演 $it" },
             ).joinToString(" · ").ifBlank { null },
             episodes = episodes,
+            score = score(info?.str("score")),
         )
+    }
+
+    /** The score the website shows on its cards; it sends "暂无评分" or 0 when there is none. */
+    fun score(raw: String?): String? {
+        val value = raw?.trim()?.toDoubleOrNull()?.takeIf { it > 0 && it <= 10 } ?: return null
+        return "%.1f".format(java.util.Locale.ROOT, value)
     }
 
     /** Episodes come as a `playList` array of objects with a key and a name. */

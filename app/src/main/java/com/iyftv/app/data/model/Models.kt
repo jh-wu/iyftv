@@ -9,7 +9,15 @@ data class VideoSummary(
     val title: String,
     val imageUrl: String?,
     val subtitle: String? = null,
+    /** The site's score out of 10, e.g. "7.2"; null when it has none. */
+    val score: String? = null,
 )
+
+/** One way to narrow a category list, e.g. by region, with the values the site accepts. */
+data class FilterGroup(val id: String, val allLabel: String, val options: List<String>)
+
+/** Chosen filter values by [FilterGroup.id]; a missing id means no filter. */
+typealias ListFilter = Map<String, String>
 
 data class Episode(val key: String, val name: String)
 
@@ -20,6 +28,7 @@ data class VideoDetail(
     val description: String?,
     val meta: String?,
     val episodes: List<Episode>,
+    val score: String? = null,
 )
 
 data class Page<T>(val items: List<T>, val hasMore: Boolean)

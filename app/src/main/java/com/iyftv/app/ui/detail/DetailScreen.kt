@@ -37,6 +37,7 @@ import com.iyftv.app.data.history.WatchRecord
 import com.iyftv.app.data.model.VideoDetail
 import com.iyftv.app.ui.common.Load
 import com.iyftv.app.ui.common.Message
+import com.iyftv.app.ui.common.ScoreColor
 import com.iyftv.app.ui.common.formatTime
 import com.iyftv.app.ui.common.userMessage
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -102,6 +103,9 @@ private fun DetailContent(d: VideoDetail, record: WatchRecord?, onPlay: (String?
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     Text(d.title, style = MaterialTheme.typography.headlineMedium)
+                    d.score?.let {
+                        Text("评分 $it", style = MaterialTheme.typography.titleMedium, color = ScoreColor)
+                    }
                     d.meta?.let {
                         Text(it, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }

@@ -2,6 +2,7 @@ package com.iyftv.app.data.iyf
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Fixtures are trimmed copies of live iyf.tv responses (captured by tools/probe_site.py). */
@@ -92,6 +93,24 @@ class IyfParsersTest {
             IyfParsers.withOtherVideoHosts(listOf(au)),
         )
         assertEquals(listOf("https://other.example/a.m3u8"), IyfParsers.withOtherVideoHosts(listOf("https://other.example/a.m3u8")))
+    }
+
+    @Test fun videos_readScoreAndSkipMissingOnes() {
+        val list = IyfParsers.parse(
+            """{"data":{"info":[{"result":[
+               {"key":"3e1tTwzma5K","title":"坂本日常真人版","image":"https://x/a.gif","score":"7.2","rating":"7.9"},
+               {"key":"4f2tTwzma5K","title":"B","image":"https://x/b.gif","score":"暂无评分"},
+               {"key":"5g3tTwzma5K","title":"C","image":"https://x/c.gif","score":"0"}
+            ]}]}}"""
+        )
+        assertEquals(listOf("7.2", null, null), IyfParsers.videos(list).map { it.score })
+        assertEquals("8.0", IyfParsers.score("8"))
+    }
+
+    @Test fun listQuery_addsChosenFilters() {
+        val q = IyfConfig.listQuery("0,1,3", 2, mapOf("region" to "日本", "year" to "今年"))
+        assertTrue(q, q.endsWith("&region=%E6%97%A5%E6%9C%AC&year=%E4%BB%8A%E5%B9%B4"))
+        assertTrue(IyfConfig.listQuery("0,1,3", 1).endsWith("isfree=-1"))
     }
 
     @Test fun siteRegion_readsVisitorRegionFromHomepage() {

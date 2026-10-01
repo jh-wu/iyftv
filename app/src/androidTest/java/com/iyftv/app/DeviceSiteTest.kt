@@ -32,6 +32,15 @@ class DeviceSiteTest {
         }
         assertTrue(source.search("繁花", 1).items.isNotEmpty())
 
+        // Scores show on cards, and the filters narrow a category.
+        val movies = source.categories().first { it.name == "电影" }
+        assertTrue("no scores on 电影", source.list(movies, 1).items.any { it.score != null })
+        for (g in source.filters()) {
+            val page = source.list(movies, 1, mapOf(g.id to g.options.first()))
+            println("DeviceSiteTest 电影 ${g.id}=${g.options.first()}: ${page.items.take(3).map { it.title }}")
+            assertTrue("电影 filtered by ${g.id} is empty", page.items.isNotEmpty())
+        }
+
         val tv = source.list(source.categories().first { it.name == "电视剧" }, 1).items.first()
         val detail = source.detail(tv.key)
         assertTrue(detail.episodes.isNotEmpty())

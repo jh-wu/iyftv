@@ -2,6 +2,7 @@ package com.iyftv.app.data.iyf
 
 import com.iyftv.app.data.VideoSource
 import com.iyftv.app.data.model.Category
+import com.iyftv.app.data.model.ListFilter
 import com.iyftv.app.data.model.Page
 import com.iyftv.app.data.model.Stream
 import com.iyftv.app.data.model.VideoDetail
@@ -28,10 +29,12 @@ class IyfVideoSource(
 
     override suspend fun categories(): List<Category> = IyfConfig.categories
 
-    override suspend fun list(category: Category, page: Int): Page<VideoSummary> {
-        val root = api(IyfConfig.LIST_PATH, IyfConfig.listQuery(category.id, page))
+    override suspend fun list(category: Category, page: Int, filter: ListFilter): Page<VideoSummary> {
+        val root = api(IyfConfig.LIST_PATH, IyfConfig.listQuery(category.id, page, filter))
         return toPage(root, page)
     }
+
+    override fun filters() = IyfConfig.FILTERS
 
     override suspend fun search(query: String, page: Int): Page<VideoSummary> {
         val root = api(IyfConfig.SEARCH_PATH, IyfConfig.searchQuery(query, page))

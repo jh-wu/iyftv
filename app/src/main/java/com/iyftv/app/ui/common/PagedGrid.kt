@@ -99,7 +99,7 @@ fun VideoGrid(
             if (index >= state.items.size - 12) {
                 LaunchedEffect(state.items.size) { onLoadMore() }
             }
-            PosterCard(v.title, v.imageUrl, v.subtitle, onClick = { onOpen(v) })
+            PosterCard(v.title, v.imageUrl, v.subtitle, onClick = { onOpen(v) }, score = v.score)
         }
         if (state.error != null && state.items.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) { Message("加载失败：${state.error}", onRetry = onLoadMore) }
