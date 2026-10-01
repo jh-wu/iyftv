@@ -26,6 +26,13 @@ class IyfSignerTest {
         assertEquals("cinema=1&ID=Ab&vv=$expected&pub=PUB", IyfSigner.sign("cinema=1&ID=Ab", keys))
     }
 
+    @Test fun signUrl_signsOnlyTheQuery() {
+        val keys = IyfKeys("PUB", listOf("k0"))
+        val url = "https://h.vip/a/chunklist.m3u8?vhash=x%3D&us=1"
+        assertEquals("https://h.vip/a/chunklist.m3u8?" + IyfSigner.sign("vhash=x%3D&us=1", keys), IyfSigner.signUrl(url, keys))
+        assertEquals("https://h.vip/a.m3u8", IyfSigner.signUrl("https://h.vip/a.m3u8", keys))
+    }
+
     @Test fun sign_hashesDecodedValues() {
         val keys = IyfKeys("PUB", listOf("k0"))
         val signed = IyfSigner.sign("tags=%E7%B9%81%E8%8A%B1&page=1", keys)

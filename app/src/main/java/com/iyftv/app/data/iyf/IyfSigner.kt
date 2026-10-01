@@ -18,6 +18,12 @@ object IyfSigner {
         return "$query&vv=$vv&pub=${keys.publicKey}"
     }
 
+    /** [url] with its query signed, as the web client does for video playlist links too. */
+    fun signUrl(url: String, keys: IyfKeys): String {
+        val i = url.indexOf('?')
+        return if (i < 0) url else url.substring(0, i + 1) + sign(url.substring(i + 1), keys)
+    }
+
     /** Same as the web client's `get_query`: values URL-decoded, `+` as space. */
     fun decodeQuery(query: String): String =
         query.split("&").joinToString("&") { part ->

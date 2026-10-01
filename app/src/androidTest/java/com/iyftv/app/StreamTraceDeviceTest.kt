@@ -5,6 +5,7 @@ import android.webkit.CookieManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.iyftv.app.data.iyf.IyfSigner
 import com.iyftv.app.ui.player.WebPlayerActivity
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -80,6 +81,17 @@ class StreamTraceDeviceTest {
                     log("COOKIES $cookieHost: ${CookieManager.getInstance().getCookie(cookieHost)}")
                 }
                 urls.firstOrNull { it.contains("/v3/video/play") }?.let { log("SITE play API answer (fetched by app): " + appFetch(it, mine.headers, 5000)) }
+                // Does the app sign a playlist link exactly as the page did?
+                val pageKeys = CompletableDeferred<String>()
+                scenario.onActivity {
+                    it.evalScript("(document.documentElement.outerHTML.match(/\"pConfig\"\\s*:\\s*\\{[^}]*\\}/)||[''])[0]") { v -> pageKeys.complete(v) }
+                }
+                val keys = IyfSigner.parseKeys(JSONTokener(pageKeys.await()).nextValue() as? String ?: "")
+                urls.firstOrNull { it.contains(".m3u8") && it.contains("&vv=") }?.let { u ->
+                    val unsigned = u.substringBefore("&vv=")
+                    val mine = keys?.let { k -> IyfSigner.signUrl(unsigned, k) }
+                    log("SIGN CHECK keys=${keys != null} same=${mine == u}\npage ${u.substringAfter("&vv=")}\napp  ${mine?.substringAfter("&vv=")}")
+                }
                 val playlists = urls.filter { it.contains(".m3u8") }.distinct().take(3)
                 for (u in playlists) {
                     log("PLAYLIST $u\n--- fetched in page: " + pageFetch(scenario, u))

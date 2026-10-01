@@ -57,7 +57,12 @@ class IyfVideoSource(
         }.distinct().let(IyfParsers::withOtherVideoHosts)
         val urls = fromApi.ifEmpty { listOfNotNull(sniffer?.sniff(IyfConfig.playPageUrl(videoKey, episodeKey))) }
         if (urls.isEmpty()) throw IOException("No stream found for $videoKey / $episodeKey")
-        return Stream(urls.first(), IyfConfig.defaultHeaders, urls.drop(1))
+        // The website signs the playlist link like an API call and requests it from the
+        // episode's page; do the same, so the video servers see the same request.
+        val k = keys(refresh = false)
+        val signed = urls.map { if (it.contains("&vv=")) it else IyfSigner.signUrl(it, k) }
+        val headers = IyfConfig.defaultHeaders + ("Referer" to IyfConfig.playPageUrl(videoKey, episodeKey))
+        return Stream(signed.first(), headers, signed.drop(1))
     }
 
     private fun toPage(root: JsonElement, page: Int): Page<VideoSummary> {
