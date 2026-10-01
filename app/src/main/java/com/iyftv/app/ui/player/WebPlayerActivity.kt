@@ -18,7 +18,7 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.LinearLayout
-import android.widget.ProgressBar
+import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -54,7 +54,9 @@ class WebPlayerActivity : ComponentActivity() {
     private lateinit var titleView: TextView
     private lateinit var timeView: TextView
     private lateinit var durationView: TextView
-    private lateinit var progress: ProgressBar
+    private lateinit var progress: SeekBar
+    private lateinit var rewindButton: ImageButton
+    private lateinit var forwardButton: ImageButton
     private lateinit var playButton: ImageButton
     private lateinit var prevButton: ImageButton
     private lateinit var nextButton: ImageButton
@@ -133,15 +135,24 @@ class WebPlayerActivity : ComponentActivity() {
         }
         timeView = TextView(this).apply { setTextColor(Color.WHITE); textSize = 14f; text = "00:00" }
         durationView = TextView(this).apply { setTextColor(Color.WHITE); textSize = 14f; text = "00:00" }
-        progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+        progress = SeekBar(this).apply {
             max = 1000
-            isFocusable = false
+            // Left/right on the focused bar are handled in dispatchKeyEvent; touch isn't used.
+            isFocusable = true
+            setOnTouchListener { _, _ -> true }
+            fun highlight(focused: Boolean) {
+                thumb?.alpha = if (focused) 255 else 0
+                progressTintList = android.content.res.ColorStateList.valueOf(if (focused) 0xFFFFB400.toInt() else Color.WHITE)
+                scaleY = if (focused) 1.5f else 1f
+            }
+            highlight(false)
+            setOnFocusChangeListener { _, focused -> highlight(focused) }
         }
         prevButton = button(androidx.media3.ui.R.drawable.exo_icon_previous, "上一集") { switchEpisode(-1) }
         playButton = button(androidx.media3.ui.R.drawable.exo_icon_pause, "播放/暂停") { togglePlay() }
         nextButton = button(androidx.media3.ui.R.drawable.exo_icon_next, "下一集") { switchEpisode(1) }
-        val rewind = button(androidx.media3.ui.R.drawable.exo_icon_rewind, "后退10秒") { seekBy(-10) }
-        val forward = button(androidx.media3.ui.R.drawable.exo_icon_fastforward, "前进10秒") { seekBy(10) }
+        rewindButton = button(androidx.media3.ui.R.drawable.exo_icon_rewind, "后退10秒") { seekBy(-10) }
+        forwardButton = button(androidx.media3.ui.R.drawable.exo_icon_fastforward, "前进10秒") { seekBy(10) }
         updateEpisodeButtons()
 
         return LinearLayout(this).apply {
@@ -160,7 +171,7 @@ class WebPlayerActivity : ComponentActivity() {
             }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = (8 * dp).toInt() })
             addView(LinearLayout(context).apply {
                 gravity = Gravity.CENTER
-                listOf(prevButton, rewind, playButton, forward, nextButton).forEach(::addView)
+                listOf(prevButton, rewindButton, playButton, forwardButton, nextButton).forEach(::addView)
             }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = (8 * dp).toInt() })
         }
     }
@@ -216,6 +227,25 @@ class WebPlayerActivity : ComponentActivity() {
                 if (paused) androidx.media3.ui.R.drawable.exo_icon_play else androidx.media3.ui.R.drawable.exo_icon_pause,
             )
         }
+    }
+
+    private var lastHoldSeek = 0L
+    private var skipKeyHeld = false
+
+    /**
+     * Skips for a key press, and keeps skipping while it is held: 10s at a time,
+     * five times a second, then 30s and 60s steps the longer the key is held.
+     */
+    private fun holdSeek(event: KeyEvent, direction: Int) {
+        if (event.repeatCount > 0 && event.eventTime - lastHoldSeek < 200) return
+        lastHoldSeek = event.eventTime
+        val held = event.eventTime - event.downTime
+        val step = when {
+            held < 2_000 -> 10
+            held < 5_000 -> 30
+            else -> 60
+        }
+        seekBy(step * direction)
     }
 
     private fun clock(seconds: Double): String {
@@ -307,20 +337,45 @@ class WebPlayerActivity : ComponentActivity() {
                 if (event.action == KeyEvent.ACTION_UP) hideControls()
                 return true
             }
-            // The bar is open: arrows move between its buttons, OK presses one.
             if (event.action == KeyEvent.ACTION_DOWN) showControls()
+            // A left/right press that opened the bar keeps skipping while held, instead of moving focus.
+            if (skipKeyHeld && (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT)) {
+                if (event.action == KeyEvent.ACTION_DOWN) holdSeek(event, if (code == KeyEvent.KEYCODE_DPAD_LEFT) -1 else 1)
+                else skipKeyHeld = false
+                return true
+            }
+            val focused = currentFocus
+            val ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
+            // On the progress bar, left/right move through the video; holding the key speeds up.
+            if (focused == progress && (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT)) {
+                if (event.action == KeyEvent.ACTION_DOWN) holdSeek(event, if (code == KeyEvent.KEYCODE_DPAD_LEFT) -1 else 1)
+                return true
+            }
+            // OK held on back/forward 10s keeps skipping until it is released.
+            if (ok && (focused == rewindButton || focused == forwardButton)) {
+                if (event.action == KeyEvent.ACTION_DOWN) holdSeek(event, if (focused == rewindButton) -1 else 1)
+                return true
+            }
+            // Otherwise arrows move between the bar's buttons and OK presses one.
             return super.dispatchKeyEvent(event)
         }
-        // Bar hidden: OK pauses, left/right skip, any of them also brings up the bar.
+        // Bar hidden: OK pauses, left/right skip (held: keep skipping), any of them also brings up the bar.
+        if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                holdSeek(event, if (code == KeyEvent.KEYCODE_DPAD_LEFT) -1 else 1)
+                if (event.repeatCount == 0) {
+                    skipKeyHeld = true
+                    showControls()
+                }
+            }
+            return true
+        }
         val action: () -> Unit = when (code) {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> ::togglePlay
-            KeyEvent.KEYCODE_DPAD_RIGHT -> { { seekBy(10) } }
-            KeyEvent.KEYCODE_DPAD_LEFT -> { { seekBy(-10) } }
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_INFO -> { {} }
             else -> null
         } ?: return super.dispatchKeyEvent(event)
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) { action(); showControls() }
-        else if (event.action == KeyEvent.ACTION_DOWN && code in listOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT)) action()
         return true
     }
 

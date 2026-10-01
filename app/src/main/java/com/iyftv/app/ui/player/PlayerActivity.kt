@@ -22,6 +22,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.iyftv.app.IyfTvApp
+import com.iyftv.app.data.history.PlayerChoice
 import com.iyftv.app.data.history.WatchRecord
 import com.iyftv.app.data.model.Stream
 import com.iyftv.app.data.model.VideoDetail
@@ -94,8 +95,8 @@ class PlayerActivity : ComponentActivity() {
         val d = detail ?: return
         val ep = d.episodes[index]
         episodeIndex = index
-        if (preferWebPlayer) {
-            // Earlier this session the video servers refused the app's player.
+        if (app.playerChoice.get(d.key) == PlayerChoice.Player.Web) {
+            // The video servers refused the app's player for this title before.
             openWebPlayer(startMs)
             return
         }
@@ -127,15 +128,19 @@ class PlayerActivity : ComponentActivity() {
     private fun openWebPlayer(position: Long) {
         val d = detail ?: return
         val ep = d.episodes[episodeIndex]
-        val note = if (preferWebPlayer) null else "视频服务器拒绝了播放器，改用网页播放（${attempts.lastOrNull().orEmpty()}）"
-        preferWebPlayer = true
+        val note = if (app.playerChoice.get(d.key) == PlayerChoice.Player.Web) null
+        else "视频服务器拒绝了播放器，改用网页播放（${attempts.lastOrNull().orEmpty()}）"
+        app.playerChoice.set(d.key, PlayerChoice.Player.Web)
         startActivity(WebPlayerActivity.intent(this, d.key, ep.key, position, d.title, d.imageUrl, ep.name, note))
         finish()
     }
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
-            if (state == Player.STATE_READY) profiles?.keep()
+            if (state == Player.STATE_READY) {
+                profiles?.keep()
+                detail?.let { app.playerChoice.set(it.key, PlayerChoice.Player.App) }
+            }
             if (state == Player.STATE_ENDED) {
                 save()
                 val d = detail ?: return
@@ -243,9 +248,6 @@ class PlayerActivity : ComponentActivity() {
     }
 
     companion object {
-        /** Set once the app's player has been refused; later episodes go straight to the web player. */
-        private var preferWebPlayer = false
-
         private const val EXTRA_VIDEO = "video"
         private const val EXTRA_EPISODE = "episode"
 

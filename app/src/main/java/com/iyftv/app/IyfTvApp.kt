@@ -3,6 +3,7 @@ package com.iyftv.app
 import android.app.Application
 import com.iyftv.app.data.VideoSource
 import com.iyftv.app.data.history.AppDatabase
+import com.iyftv.app.data.history.PlayerChoice
 import com.iyftv.app.data.history.SearchHistory
 import com.iyftv.app.data.history.WatchHistoryDao
 import com.iyftv.app.data.iyf.IyfVideoSource
@@ -28,6 +29,7 @@ class IyfTvApp : Application() {
     lateinit var updates: UpdateChecker
         private set
     lateinit var searchHistory: SearchHistory
+    lateinit var playerChoice: PlayerChoice
         private set
     lateinit var sniffer: WebViewStreamSniffer
         private set
@@ -51,6 +53,7 @@ class IyfTvApp : Application() {
         source = IyfVideoSource(http, sniffer, WebViewKeyFetcher(this))
         history = AppDatabase.create(this).watchHistory()
         searchHistory = SearchHistory(this)
+        playerChoice = PlayerChoice(this)
         updates = UpdateChecker(
             http.newBuilder().cookieJar(CookieJar.NO_COOKIES).readTimeout(60, TimeUnit.SECONDS).build(),
             BuildConfig.VERSION_CODE,

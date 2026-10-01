@@ -38,6 +38,12 @@ class WebPlayerDeviceTest {
             var shown = false
             scenario.onActivity { shown = it.controlsShown }
             assertTrue("control bar did not appear after a remote key", shown)
+            // Up from the buttons reaches the progress bar, where right moves the video on.
+            instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_UP)
+            instrumentation.waitForIdleSync()
+            var onBar = false
+            scenario.onActivity { onBar = it.currentFocus is android.widget.SeekBar }
+            assertTrue("progress bar can't be reached with the remote", onBar)
         }
     }
 }
