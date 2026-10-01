@@ -29,6 +29,8 @@ class IyfTvApp : Application() {
         private set
     lateinit var searchHistory: SearchHistory
         private set
+    lateinit var sniffer: WebViewStreamSniffer
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -45,7 +47,8 @@ class IyfTvApp : Application() {
                     Dns.SYSTEM.lookup(hostname).sortedBy { if (it is Inet4Address) 0 else 1 }
             })
             .build()
-        source = IyfVideoSource(http, WebViewStreamSniffer(this), WebViewKeyFetcher(this))
+        sniffer = WebViewStreamSniffer(this)
+        source = IyfVideoSource(http, sniffer, WebViewKeyFetcher(this))
         history = AppDatabase.create(this).watchHistory()
         searchHistory = SearchHistory(this)
         updates = UpdateChecker(

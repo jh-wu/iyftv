@@ -30,6 +30,12 @@
         </activity>
 
         <activity
+            android:name=".ui.player.WebPlayerActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <activity
             android:name=".ui.player.PlayerActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="false"

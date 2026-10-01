@@ -22,8 +22,11 @@ class WebViewStreamSniffer(
     private val timeoutMillis: Long = 20_000,
 ) : StreamSniffer {
 
+    override suspend fun sniff(pageUrl: String): String? = sniffRequest(pageUrl)?.first
+
+    /** The first HLS request the page makes, with the headers the browser engine sent for it. */
     @SuppressLint("SetJavaScriptEnabled")
-    override suspend fun sniff(pageUrl: String): String? = withContext(Dispatchers.Main) {
+    suspend fun sniffRequest(pageUrl: String): Pair<String, Map<String, String>>? = withContext(Dispatchers.Main) {
         var webView: WebView? = null
         try {
             withTimeoutOrNull(timeoutMillis) {
@@ -41,7 +44,8 @@ class WebViewStreamSniffer(
                         ): WebResourceResponse? {
                             val url = request.url.toString()
                             if (IyfParsers.isHlsUrl(url)) {
-                                v.post { if (cont.isActive) cont.resume(url) }
+                                val headers = request.requestHeaders.orEmpty()
+                                v.post { if (cont.isActive) cont.resume(url to headers) }
                             }
                             return null
                         }
