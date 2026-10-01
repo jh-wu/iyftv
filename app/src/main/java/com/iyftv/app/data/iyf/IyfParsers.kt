@@ -123,6 +123,22 @@ object IyfParsers {
             .toList()
     }
 
+    /**
+     * [urls] followed by the same links on the video service's other domains. In
+     * Australia the play API hands the app a globenete.vip link that Cloudflare
+     * refuses, while browsers there play the same file from latensiorb.vip.
+     */
+    fun withOtherVideoHosts(urls: List<String>): List<String> {
+        val swapped = urls.flatMap { url ->
+            val m = VIDEO_HOST.find(url) ?: return@flatMap emptyList()
+            IyfConfig.VIDEO_DOMAINS.filter { it != m.groupValues[2] }
+                .map { url.replaceRange(m.groups[2]!!.range, it) }
+        }
+        return (urls + swapped).distinct()
+    }
+
+    private val VIDEO_HOST = Regex("^https?://([A-Za-z0-9]+-e\\d+)\\.([a-z0-9]+\\.vip)/")
+
     fun isHlsUrl(s: String) = s.startsWith("http") && s.contains(".m3u8")
 
     private val KEY_PATTERN = Regex("[A-Za-z0-9_-]{8,16}")

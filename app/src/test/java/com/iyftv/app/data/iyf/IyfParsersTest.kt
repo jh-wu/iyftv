@@ -81,6 +81,19 @@ class IyfParsersTest {
         )
     }
 
+    @Test fun withOtherVideoHosts_triesSamePathOnOtherDomains() {
+        val au = "https://cs100-e1.globenete.vip/ppot/_definst_/mp4:s100/dvod/x.mp4/chunklist.m3u8?lb=1"
+        assertEquals(
+            listOf(
+                au,
+                "https://cs100-e1.latensiorb.vip/ppot/_definst_/mp4:s100/dvod/x.mp4/chunklist.m3u8?lb=1",
+                "https://cs100-e1.pipecdn.vip/ppot/_definst_/mp4:s100/dvod/x.mp4/chunklist.m3u8?lb=1",
+            ),
+            IyfParsers.withOtherVideoHosts(listOf(au)),
+        )
+        assertEquals(listOf("https://other.example/a.m3u8"), IyfParsers.withOtherVideoHosts(listOf("https://other.example/a.m3u8")))
+    }
+
     @Test fun siteRegion_readsVisitorRegionFromHomepage() {
         val html = """..."isPhotoEnabled":false}],"switch-region":[{"ipCountry":"AU","regionCode":"AU","regionName":"澳大利亚","largeLogo":"https://static.iyf.tv/images/rv123/AU.png?v=8"}],"slide-list_region_AU_cid_0,1_size_8":[..."""
         assertEquals("AU", IyfParsers.siteRegion(html))

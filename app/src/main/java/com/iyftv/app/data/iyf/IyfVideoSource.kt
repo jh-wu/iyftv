@@ -51,7 +51,7 @@ class IyfVideoSource(
         val fromApi = regions.flatMap { r ->
             runCatching { IyfParsers.streamUrls(api(IyfConfig.PLAY_PATH, IyfConfig.playQuery(episodeKey, r))) }
                 .getOrNull().orEmpty()
-        }.distinct()
+        }.distinct().let(IyfParsers::withOtherVideoHosts)
         val urls = fromApi.ifEmpty { listOfNotNull(sniffer?.sniff(IyfConfig.playPageUrl(videoKey, episodeKey))) }
         if (urls.isEmpty()) throw IOException("No stream found for $videoKey / $episodeKey")
         return Stream(urls.first(), IyfConfig.defaultHeaders, urls.drop(1))

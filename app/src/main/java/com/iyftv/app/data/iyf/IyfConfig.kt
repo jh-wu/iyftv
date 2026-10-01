@@ -51,6 +51,9 @@ object IyfConfig {
 
     const val GLOBAL_REGION = "GL."
 
+    /** Domains the video servers answer on; the same path works on each. */
+    val VIDEO_DOMAINS = listOf("latensiorb.vip", "globenete.vip", "pipecdn.vip")
+
     const val LIST_PATH = "/api/list/Search"
     const val SEARCH_PATH = "/v3/list/briefsearch"
     const val DETAIL_PATH = "/v3/video/detail"
