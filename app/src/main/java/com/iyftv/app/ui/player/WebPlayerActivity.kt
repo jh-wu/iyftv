@@ -462,6 +462,7 @@ class WebPlayerActivity : ComponentActivity() {
               r.fs=document.fullscreenElement?document.fullscreenElement.tagName:null;
               r.body=[].map.call(document.body.children,function(x){return x.tagName+'.'+String(x.className).slice(0,30)+(getComputedStyle(x).display==='none'?'(hidden)':'')}).slice(0,15);
               r.clean=document.documentElement.classList.contains('iyftv-clean');
+              r.log=(window.__iyftvLog||[]).slice(-25);
               try{r.ls=Object.keys(localStorage).filter(function(k){return /vol|mute|sound|player|xg|dplayer|art/i.test(k)}).map(function(k){return k+'='+String(localStorage.getItem(k)).slice(0,80)})}catch(e){r.ls=String(e)}
               if(v){r.src=(v.currentSrc||v.src||'').slice(0,120);r.paused=v.paused;r.t=v.currentTime;r.d=String(v.duration);
                 r.ready=v.readyState;r.net=v.networkState;r.err=v.error?v.error.code+' '+v.error.message:null;}
@@ -491,31 +492,60 @@ class WebPlayerActivity : ComponentActivity() {
                   'html.iyftv-clean video.iyftv-full.iyftv-ad{opacity:0!important}';
                 document.head.appendChild(s);
               }
-              // Mid-way the site swaps the episode's source for its 20s ad clip and swaps it
-              // back on a timer. Refuse the swap, so the episode keeps playing; when the site
-              // brings the episode back later, carry on from where it really is.
+              // Mid-way the site takes the episode off its video element (detaching the stream),
+              // plays its 20s ad clip there and puts the episode back on a timer. Refuse to let
+              // go of the episode or take the ad, so the episode keeps playing from what is
+              // already buffered; when the site brings it back, carry on from where it really is.
               if(!window.__iyftvSrcHook){
                 window.__iyftvSrcHook=true;
+                var note=function(el,what){
+                  var l=window.__iyftvLog=window.__iyftvLog||[];
+                  l.push(Math.round(performance.now()/100)/10+' '+what+' t'+el.currentTime.toFixed(1)+' rs'+el.readyState);
+                  if(l.length>40) l.shift();
+                };
                 var isAd=function(u){ return /global-cdn\.me\/.*\.mp4/.test(String(u)); };
-                var refuse=function(el,u){
-                  if(el!==window.__iyftvMain||!isAd(u)) return false;
-                  window.__iyftvSkip={src:el.currentSrc,t:el.currentTime,at:Date.now()};
+                var keep=function(el,u){
+                  if(el!==window.__iyftvMain) return false;
+                  var playing=String(el.currentSrc).indexOf('blob:')===0;
+                  if(!(isAd(u)||(u===''&&playing))) return false;
+                  if(!window.__iyftvSkip||window.__iyftvSkip.src!==el.currentSrc)
+                    window.__iyftvSkip={src:el.currentSrc,t:el.currentTime,at:Date.now()};
                   return true;
                 };
                 var d=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'src');
                 Object.defineProperty(HTMLMediaElement.prototype,'src',{configurable:true,enumerable:d.enumerable,get:d.get,
-                  set:function(u){ if(!refuse(this,u)) d.set.call(this,u); }});
+                  set:function(u){ var k=keep(this,u); if(this===window.__iyftvMain) note(this,(k?'refused ':'')+'src='+String(u).slice(-30)); if(!k) d.set.call(this,u); }});
                 var sa=Element.prototype.setAttribute;
                 Element.prototype.setAttribute=function(n,u){
-                  if(String(n).toLowerCase()==='src'&&refuse(this,u)) return;
+                  if(String(n).toLowerCase()==='src'&&this instanceof HTMLMediaElement){
+                    var k=keep(this,u); if(this===window.__iyftvMain) note(this,(k?'refused ':'')+'setAttribute src='+String(u).slice(-30)); if(k) return;
+                  }
                   return sa.apply(this,arguments);
+                };
+                var ra=Element.prototype.removeAttribute;
+                Element.prototype.removeAttribute=function(n){
+                  if(String(n).toLowerCase()==='src'&&this instanceof HTMLMediaElement){
+                    var k=keep(this,''); if(this===window.__iyftvMain) note(this,(k?'refused ':'')+'removeAttribute src'); if(k) return;
+                  }
+                  return ra.apply(this,arguments);
                 };
                 var ld=HTMLMediaElement.prototype.load;
                 HTMLMediaElement.prototype.load=function(){
-                  var k=window.__iyftvSkip;
-                  if(this===window.__iyftvMain&&k&&Date.now()-k.at<2000&&this.currentSrc===k.src) return;
+                  var k=window.__iyftvSkip, refuse=this===window.__iyftvMain&&k&&this.currentSrc===k.src;
+                  if(this===window.__iyftvMain) note(this,(refuse?'refused ':'')+'load');
+                  if(refuse) return;
                   return ld.apply(this,arguments);
                 };
+              }
+              if(v===window.__iyftvMain&&!v.__iyftvNoted){
+                v.__iyftvNoted=true;
+                ['emptied','pause','play','seeking','waiting','error','ended'].forEach(function(e){
+                  v.addEventListener(e,function(){
+                    var l=window.__iyftvLog=window.__iyftvLog||[];
+                    l.push(Math.round(performance.now()/100)/10+' '+e+' t'+v.currentTime.toFixed(1)+' rs'+v.readyState+(v.error?' err'+v.error.code:''));
+                    if(l.length>40) l.shift();
+                  });
+                });
               }
               if(v.parentNode!==document.body){ document.body.appendChild(v); }
               v.classList.add('iyftv-full');

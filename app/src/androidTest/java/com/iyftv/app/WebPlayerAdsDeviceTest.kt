@@ -49,8 +49,8 @@ class WebPlayerAdsDeviceTest {
             }
             val mains = samples.map(::mainEntry)
             Log.i("WebPlayerDiag", "ad samples: ${mains.count { it.contains(".mp4 ") }}, ad requests refused: ${WebPlayerActivity.adsBlocked}")
-            val adSamples = mains.count { it.contains(".mp4 ") }
-            assertTrue("the ad replaced the episode in $adSamples samples", adSamples <= 1)
+            val adSamples = mains.count { it.contains(".mp4 ") || it.contains(" rs0 ") }
+            assertTrue("the episode stopped for the ad in $adSamples samples", adSamples <= 1)
             val times = mains.mapNotNull { Regex(" t([0-9.]+)/").find(it)?.groupValues?.get(1)?.toDouble() }
             assertTrue("episode did not keep playing: ${times.first()} -> ${times.last()}", times.last() - times.first() > 120)
             val last = mains.last()
