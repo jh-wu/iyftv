@@ -135,8 +135,13 @@ def hosts(extra):
                 w(v)
     w(r)
     return sorted({urllib.parse.urlparse(u).netloc for u in walk_urls})
-for extra in ["", "", "", "&sharpness=480&line=0", "&line=1", "&line=2", "&line=3", "&line=4", "&line=auto"]:
-    print(f"play{extra or ' (default)'} -> {hosts(extra)}")
+section("same link on other video hosts (browsers in AU were given a different one)")
+if urls:
+    u = urllib.parse.urlparse(urls[0])
+    for sub in ["sss100-e1", "cs100-e1"]:
+        for dom in ["pipecdn.vip", "globenete.vip", "latensiorb.vip"]:
+            c, hd, b = fetch(u._replace(netloc=f"{sub}.{dom}").geturl(), limit=200)
+            print(f"{sub}.{dom} -> HTTP {c} {hd.get('Content-Type')} {text(b)[:40]!r}")
 
 section("line / host settings in the site")
 for m in list(re.finditer(r'"line[^"]*"\s*:\s*[^,}]{0,80}', h))[:10]:
