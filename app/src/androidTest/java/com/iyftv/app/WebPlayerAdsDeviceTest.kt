@@ -47,9 +47,12 @@ class WebPlayerAdsDeviceTest {
                     Log.i("WebPlayerDiag", s)
                 }
             }
-            // The site waits about 20s on its ad whatever we do, so only report how long it lasted.
             val mains = samples.map(::mainEntry)
             Log.i("WebPlayerDiag", "ad samples: ${mains.count { it.contains(".mp4 ") }}, ad requests refused: ${WebPlayerActivity.adsBlocked}")
+            val adSamples = mains.count { it.contains(".mp4 ") }
+            assertTrue("the ad replaced the episode in $adSamples samples", adSamples <= 1)
+            val times = mains.mapNotNull { Regex(" t([0-9.]+)/").find(it)?.groupValues?.get(1)?.toDouble() }
+            assertTrue("episode did not keep playing: ${times.first()} -> ${times.last()}", times.last() - times.first() > 120)
             val last = mains.last()
             assertTrue("episode lost its place on top: ${samples.last()}", last.isNotEmpty())
             assertFalse("episode is still on the ad clip: $last", last.contains(".mp4 "))

@@ -491,6 +491,32 @@ class WebPlayerActivity : ComponentActivity() {
                   'html.iyftv-clean video.iyftv-full.iyftv-ad{opacity:0!important}';
                 document.head.appendChild(s);
               }
+              // Mid-way the site swaps the episode's source for its 20s ad clip and swaps it
+              // back on a timer. Refuse the swap, so the episode keeps playing; when the site
+              // brings the episode back later, carry on from where it really is.
+              if(!window.__iyftvSrcHook){
+                window.__iyftvSrcHook=true;
+                var isAd=function(u){ return /global-cdn\.me\/.*\.mp4/.test(String(u)); };
+                var refuse=function(el,u){
+                  if(el!==window.__iyftvMain||!isAd(u)) return false;
+                  window.__iyftvSkip={src:el.currentSrc,t:el.currentTime,at:Date.now()};
+                  return true;
+                };
+                var d=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'src');
+                Object.defineProperty(HTMLMediaElement.prototype,'src',{configurable:true,enumerable:d.enumerable,get:d.get,
+                  set:function(u){ if(!refuse(this,u)) d.set.call(this,u); }});
+                var sa=Element.prototype.setAttribute;
+                Element.prototype.setAttribute=function(n,u){
+                  if(String(n).toLowerCase()==='src'&&refuse(this,u)) return;
+                  return sa.apply(this,arguments);
+                };
+                var ld=HTMLMediaElement.prototype.load;
+                HTMLMediaElement.prototype.load=function(){
+                  var k=window.__iyftvSkip;
+                  if(this===window.__iyftvMain&&k&&Date.now()-k.at<2000&&this.currentSrc===k.src) return;
+                  return ld.apply(this,arguments);
+                };
+              }
               if(v.parentNode!==document.body){ document.body.appendChild(v); }
               v.classList.add('iyftv-full');
               var main=window.__iyftvMain;
@@ -524,6 +550,12 @@ class WebPlayerActivity : ComponentActivity() {
                     if(ad){
                       if(isFinite(v.duration)&&v.duration>0&&v.currentTime<v.duration-0.1){ try{v.currentTime=v.duration}catch(e){} }
                     }else{
+                      var k=window.__iyftvSkip;
+                      if(k&&v.currentSrc!==k.src&&v.readyState>=1){
+                        window.__iyftvSkip=null;
+                        var to=k.t+(Date.now()-k.at)/1000;
+                        if(Date.now()-k.at<120000&&v.currentTime<to-3){ try{v.currentTime=to}catch(e){} }
+                      }
                       if(v.muted) v.muted=false;
                       if(v.volume<1) v.volume=1;
                     }
