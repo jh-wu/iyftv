@@ -71,6 +71,7 @@ class WebPlayerActivity : ComponentActivity() {
     /** Lifts the page's video element over everything else and keeps it playing. */
     private fun fullscreen() {
         web.evaluateJavascript(FULLSCREEN_JS) { }
+        web.evaluateJavascript(PROBE_JS) { lastState = it }
         if (!seeked && startAt > 0) {
             web.evaluateJavascript(
                 "(function(){var v=document.querySelector('video');if(v&&v.duration>${startAt / 1000 + 5}){v.currentTime=${startAt / 1000};return 1}return 0})()",
@@ -143,6 +144,20 @@ class WebPlayerActivity : ComponentActivity() {
     }
 
     companion object {
+        /** What the page looked like at the last check, for tests and error reports. */
+        @Volatile var lastState: String? = null
+
+        private val PROBE_JS = """
+            (function(){
+              var v=document.querySelector('video');
+              var f=[].map.call(document.querySelectorAll('iframe'),function(x){return x.src}).slice(0,3);
+              var r={url:location.href,title:document.title,videos:document.querySelectorAll('video').length,iframes:f};
+              if(v){r.src=(v.currentSrc||v.src||'').slice(0,120);r.paused=v.paused;r.t=v.currentTime;r.d=String(v.duration);
+                r.ready=v.readyState;r.net=v.networkState;r.err=v.error?v.error.code+' '+v.error.message:null;}
+              return JSON.stringify(r);
+            })()
+        """.trimIndent()
+
         private const val EXTRA_VIDEO = "video"
         private const val EXTRA_EPISODE = "episode"
         private const val EXTRA_START = "start"

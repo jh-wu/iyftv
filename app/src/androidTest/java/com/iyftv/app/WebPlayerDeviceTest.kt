@@ -28,8 +28,9 @@ class WebPlayerDeviceTest {
                 delay(2_000)
                 position = app.history.get(detail.key)?.positionMs ?: 0L
                 if (position > 0) return@use
+                android.util.Log.i("WebPlayerDeviceTest", "page: ${WebPlayerActivity.lastState}")
             }
-            assertTrue("web player recorded no progress for ${detail.title} ${ep.name}", position > 0)
+            assertTrue("web player recorded no progress for ${detail.title} ${ep.name}; page: ${WebPlayerActivity.lastState}", position > 0)
         }
     }
 }
