@@ -2,6 +2,7 @@ package com.iyftv.app.ui.player
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
@@ -46,6 +47,8 @@ class PlayerActivity : ComponentActivity() {
     private var currentStream: Stream? = null
     private val fallbackUrls = ArrayDeque<String>()
     private var refetched = false
+    private var profiles: StreamPlayer.HeaderProfiles? = null
+    private val attempts = mutableListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,10 +98,14 @@ class PlayerActivity : ComponentActivity() {
         currentStream = stream
         fallbackUrls.clear()
         fallbackUrls.addAll(stream.alternates)
-        if (!retry) refetched = false
+        if (!retry) {
+            refetched = false
+            attempts.clear()
+        }
 
         // Episodes of one title share headers, so the player is built once.
-        val p = player ?: StreamPlayer.create(this, app.http, stream.headers)
+        val headerProfiles = profiles ?: StreamPlayer.headerProfiles(this, stream.headers).also { profiles = it }
+        val p = player ?: StreamPlayer.create(this, app.http, headerProfiles)
             .also { newPlayer ->
                 player = newPlayer
                 playerView.player = newPlayer
@@ -114,6 +121,7 @@ class PlayerActivity : ComponentActivity() {
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
+            if (state == Player.STATE_READY) profiles?.keep()
             if (state == Player.STATE_ENDED) {
                 save()
                 val d = detail ?: return
@@ -132,15 +140,25 @@ class PlayerActivity : ComponentActivity() {
             val position = p?.currentPosition ?: 0L
             // Network and stream-format errors: try the episode's other URLs, then a freshly
             // requested one (stream links are signed and short-lived), before giving up.
-            if (p != null && stream != null && error.errorCode in 2000..3999) {
+            val headerProfiles = profiles
+            val status = StreamPlayer.httpStatus(error)
+            attempts += "${Uri.parse(p?.currentMediaItem?.localConfiguration?.uri?.toString() ?: "").host} ${headerProfiles?.name}: ${status ?: error.errorCodeName}"
+            if (p != null && stream != null && headerProfiles != null && error.errorCode in 2000..3999) {
+                // Refused (403): same link, different request headers.
+                if (status == 403 && headerProfiles.next()) {
+                    p.prepare()
+                    return
+                }
                 val next = fallbackUrls.removeFirstOrNull()
                 if (next != null) {
+                    headerProfiles.reset()
                     p.setMediaItem(StreamPlayer.mediaItem(stream.copy(url = next)), position)
                     p.prepare()
                     return
                 }
                 if (!refetched) {
                     refetched = true
+                    headerProfiles.reset()
                     lifecycleScope.launch { runCatching { playEpisode(episodeIndex, position, retry = true) }.onFailure(::fail) }
                     return
                 }
@@ -182,7 +200,8 @@ class PlayerActivity : ComponentActivity() {
     private fun fail(e: Throwable) {
         Log.w("PlayerActivity", "playback failed", e)
         val details = StreamPlayer.httpDetails(e)
-        errorView.text = listOfNotNull("播放失败：${StreamPlayer.describe(e)}", details, "按返回键退出")
+        val tried = attempts.takeIf { it.size > 1 }?.joinToString("\n", prefix = "尝试过：\n")
+        errorView.text = listOfNotNull("播放失败：${StreamPlayer.describe(e)}", details, tried, "按返回键退出")
             .joinToString("\n\n")
         errorView.visibility = View.VISIBLE
     }
