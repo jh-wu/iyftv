@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.KeyEvent
@@ -14,6 +15,8 @@ import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.WindowManager
 import android.webkit.WebChromeClient
 import android.webkit.WebView
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.ImageButton
@@ -32,6 +35,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.json.JSONArray
+import java.io.ByteArrayInputStream
 
 /**
  * Plays an episode with the website's own player in a full-screen WebView. Used when the
@@ -84,6 +88,13 @@ class WebPlayerActivity : ComponentActivity() {
             webChromeClient = WebChromeClient()
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String) = fullscreen()
+
+                // Refuse the site's video ads, as an ad blocker does in a browser.
+                override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+                    if (!isAd(request.url)) return null
+                    adsBlocked++
+                    return WebResourceResponse("video/mp4", null, 404, "Not Found", emptyMap(), ByteArrayInputStream(ByteArray(0)))
+                }
             }
         }
         android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(web, true)
@@ -415,6 +426,13 @@ class WebPlayerActivity : ComponentActivity() {
     companion object {
         /** What the page looked like at the last check, for tests and error reports. */
         @Volatile var lastState: String? = null
+
+        /** How many ad requests were refused; for tests. */
+        @Volatile var adsBlocked = 0
+
+        /** The site's 20s video ads (pre-roll and mid-episode) are mp4 clips on its ad CDN. */
+        fun isAd(url: Uri): Boolean =
+            url.host.orEmpty().endsWith("global-cdn.me") && url.path.orEmpty().endsWith(".mp4")
 
         /**
          * The episode's video element. The page holds several, including an empty
