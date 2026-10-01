@@ -81,6 +81,12 @@ class IyfParsersTest {
         )
     }
 
+    @Test fun siteRegion_readsVisitorRegionFromHomepage() {
+        val html = """..."isPhotoEnabled":false}],"switch-region":[{"ipCountry":"AU","regionCode":"AU","regionName":"澳大利亚","largeLogo":"https://static.iyf.tv/images/rv123/AU.png?v=8"}],"slide-list_region_AU_cid_0,1_size_8":[..."""
+        assertEquals("AU", IyfParsers.siteRegion(html))
+        assertNull(IyfParsers.siteRegion("<html>no config</html>"))
+    }
+
     @Test fun streamUrl_nullWhenOnlyAds() {
         val play = IyfParsers.parse("""{"data":{"info":[{"flvPathList":[{"isHls":false,"result":"https://ad/x.mp4"}]}]}}""")
         assertNull(IyfParsers.streamUrl(play))

@@ -45,8 +45,11 @@ object IyfConfig {
     fun playlistQuery(videoKey: String) =
         "cinema=1&vid=$videoKey&lsk=1&taxis=0&cid=0,1,4,133"
 
-    fun playQuery(episodeKey: String) =
-        "cinema=1&id=$episodeKey&a=0&lang=none&usersign=1&region=GL.&device=1&isMasterSupport=1"
+    /** [region] is what the website sends: the visitor's region code from the homepage, else "GL.". */
+    fun playQuery(episodeKey: String, region: String = GLOBAL_REGION) =
+        "cinema=1&id=$episodeKey&a=0&lang=none&usersign=1&region=$region&device=1&isMasterSupport=1"
+
+    const val GLOBAL_REGION = "GL."
 
     const val LIST_PATH = "/api/list/Search"
     const val SEARCH_PATH = "/v3/list/briefsearch"

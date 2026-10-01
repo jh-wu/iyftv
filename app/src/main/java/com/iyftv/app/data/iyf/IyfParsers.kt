@@ -105,6 +105,14 @@ object IyfParsers {
      * The HLS URL in a play response. `flvPathList` also holds a short MP4 pre-roll
      * ad (`isHls: false`), so only HLS entries are taken.
      */
+    /**
+     * The visitor's region code the homepage embeds (`"switch-region":[{"ipCountry":"AU","regionCode":"AU",..}]`).
+     * The website passes it to the play API, which picks stream servers by it.
+     */
+    fun siteRegion(html: String): String? =
+        Regex("\"switch-region\"\\s*:\\s*\\[\\s*\\{[^\\}]*?\"regionCode\"\\s*:\\s*\"([^\"]+)\"")
+            .find(html)?.groupValues?.get(1)?.takeIf { it.isNotBlank() }
+
     fun streamUrl(root: JsonElement): String? = streamUrls(root).firstOrNull()
 
     /** Every HLS URL in a play response, best first, for falling back when one fails. */

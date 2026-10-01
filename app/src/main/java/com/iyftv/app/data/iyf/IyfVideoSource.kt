@@ -24,6 +24,7 @@ class IyfVideoSource(
     private val keysLock = Mutex()
     private var keys: IyfKeys? = null
     private var domain = IyfConfig.SITE_DOMAINS.first()
+    private var region: String? = null
 
     override suspend fun categories(): List<Category> = IyfConfig.categories
 
@@ -44,9 +45,13 @@ class IyfVideoSource(
     }
 
     override suspend fun stream(videoKey: String, episodeKey: String): Stream {
-        val fromApi = runCatching {
-            IyfParsers.streamUrls(api(IyfConfig.PLAY_PATH, IyfConfig.playQuery(episodeKey)))
-        }.getOrNull().orEmpty()
+        keys(refresh = false)
+        // Ask for the links the website would get for this region, then the global ones as fallbacks.
+        val regions = listOfNotNull(region, IyfConfig.GLOBAL_REGION).distinct()
+        val fromApi = regions.flatMap { r ->
+            runCatching { IyfParsers.streamUrls(api(IyfConfig.PLAY_PATH, IyfConfig.playQuery(episodeKey, r))) }
+                .getOrNull().orEmpty()
+        }.distinct()
         val urls = fromApi.ifEmpty { listOfNotNull(sniffer?.sniff(IyfConfig.playPageUrl(videoKey, episodeKey))) }
         if (urls.isEmpty()) throw IOException("No stream found for $videoKey / $episodeKey")
         return Stream(urls.first(), IyfConfig.defaultHeaders, urls.drop(1))
@@ -81,7 +86,10 @@ class IyfVideoSource(
         val errors = mutableListOf<String>()
         for (d in listOf(domain) + (IyfConfig.SITE_DOMAINS - domain)) {
             val page = "${IyfConfig.webHost(d)}/"
-            val found = runCatching { IyfSigner.parseKeys(get(page)) ?: error("no keys in page") }
+            val found = runCatching {
+                val html = get(page)
+                IyfSigner.parseKeys(html)?.also { region = IyfParsers.siteRegion(html) } ?: error("no keys in page")
+            }
                 .onFailure { errors += "$d: ${it.message}" }
                 .getOrNull()
                 ?: browserKeys?.fetch(page)
