@@ -16,6 +16,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.iyftv.app.IyfTvApp
 import com.iyftv.app.data.history.WatchRecord
+import com.iyftv.app.data.model.Stream
 import com.iyftv.app.data.model.VideoDetail
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -35,6 +36,9 @@ class PlayerActivity : ComponentActivity() {
     private var detail: VideoDetail? = null
     private var episodeIndex = 0
     private var saveJob: Job? = null
+    private var currentStream: Stream? = null
+    private val fallbackUrls = ArrayDeque<String>()
+    private var refetched = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,11 +70,15 @@ class PlayerActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun playEpisode(index: Int, startMs: Long) {
+    private suspend fun playEpisode(index: Int, startMs: Long, retry: Boolean = false) {
         val d = detail ?: return
         val ep = d.episodes[index]
         episodeIndex = index
         val stream = app.source.stream(d.key, ep.key)
+        currentStream = stream
+        fallbackUrls.clear()
+        fallbackUrls.addAll(stream.alternates)
+        if (!retry) refetched = false
 
         // Episodes of one title share headers, so the player is built once.
         val p = player ?: StreamPlayer.create(this, app.http, stream.headers)
@@ -99,7 +107,28 @@ class PlayerActivity : ComponentActivity() {
             }
         }
 
-        override fun onPlayerError(error: PlaybackException) = fail(error)
+        override fun onPlayerError(error: PlaybackException) {
+            Log.w("PlayerActivity", "playback error ${StreamPlayer.describe(error)}")
+            val p = player
+            val stream = currentStream
+            val position = p?.currentPosition ?: 0L
+            // Network and stream-format errors: try the episode's other URLs, then a freshly
+            // requested one (stream links are signed and short-lived), before giving up.
+            if (p != null && stream != null && error.errorCode in 2000..3999) {
+                val next = fallbackUrls.removeFirstOrNull()
+                if (next != null) {
+                    p.setMediaItem(StreamPlayer.mediaItem(stream.copy(url = next)), position)
+                    p.prepare()
+                    return
+                }
+                if (!refetched) {
+                    refetched = true
+                    lifecycleScope.launch { runCatching { playEpisode(episodeIndex, position, retry = true) }.onFailure(::fail) }
+                    return
+                }
+            }
+            fail(error)
+        }
     }
 
     private fun startSaving() {

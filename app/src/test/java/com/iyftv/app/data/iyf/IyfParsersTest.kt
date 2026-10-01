@@ -67,6 +67,20 @@ class IyfParsersTest {
         assertEquals("https://sss111-e1.pipecdn.vip/x/chunklist.m3u8?vendtime=1&vhash=a", IyfParsers.streamUrl(play))
     }
 
+    @Test fun streamUrls_listsEveryHlsUrlOnceForFallback() {
+        val play = IyfParsers.parse(
+            """{"data":{"info":[{"flvPathList":[
+               {"isHls":false,"result":"https://ad/x.mp4"},
+               {"isHls":true,"result":"https://a.pipecdn.vip/1/chunklist.m3u8?v=1","backup":"https://b.pipecdn.vip/1/chunklist.m3u8?v=1"},
+               {"isHls":true,"result":"https://a.pipecdn.vip/1/chunklist.m3u8?v=1"}
+            ]}]}}"""
+        )
+        assertEquals(
+            listOf("https://a.pipecdn.vip/1/chunklist.m3u8?v=1", "https://b.pipecdn.vip/1/chunklist.m3u8?v=1"),
+            IyfParsers.streamUrls(play),
+        )
+    }
+
     @Test fun streamUrl_nullWhenOnlyAds() {
         val play = IyfParsers.parse("""{"data":{"info":[{"flvPathList":[{"isHls":false,"result":"https://ad/x.mp4"}]}]}}""")
         assertNull(IyfParsers.streamUrl(play))

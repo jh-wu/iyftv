@@ -45,12 +45,11 @@ class IyfVideoSource(
 
     override suspend fun stream(videoKey: String, episodeKey: String): Stream {
         val fromApi = runCatching {
-            IyfParsers.streamUrl(api(IyfConfig.PLAY_PATH, IyfConfig.playQuery(episodeKey)))
-        }.getOrNull()
-        val url = fromApi
-            ?: sniffer?.sniff(IyfConfig.playPageUrl(videoKey, episodeKey))
-            ?: throw IOException("No stream found for $videoKey / $episodeKey")
-        return Stream(url, IyfConfig.defaultHeaders)
+            IyfParsers.streamUrls(api(IyfConfig.PLAY_PATH, IyfConfig.playQuery(episodeKey)))
+        }.getOrNull().orEmpty()
+        val urls = fromApi.ifEmpty { listOfNotNull(sniffer?.sniff(IyfConfig.playPageUrl(videoKey, episodeKey))) }
+        if (urls.isEmpty()) throw IOException("No stream found for $videoKey / $episodeKey")
+        return Stream(urls.first(), IyfConfig.defaultHeaders, urls.drop(1))
     }
 
     private fun toPage(root: JsonElement, page: Int): Page<VideoSummary> {

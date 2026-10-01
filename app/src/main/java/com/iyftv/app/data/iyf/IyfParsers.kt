@@ -105,10 +105,14 @@ object IyfParsers {
      * The HLS URL in a play response. `flvPathList` also holds a short MP4 pre-roll
      * ad (`isHls: false`), so only HLS entries are taken.
      */
-    fun streamUrl(root: JsonElement): String? {
+    fun streamUrl(root: JsonElement): String? = streamUrls(root).firstOrNull()
+
+    /** Every HLS URL in a play response, best first, for falling back when one fails. */
+    fun streamUrls(root: JsonElement): List<String> {
         val hlsEntries = objects(root).filter { (it["isHls"] as? JsonPrimitive)?.booleanOrNull == true }
-        return hlsEntries.mapNotNull { it.str("result") }.firstOrNull(::isHlsUrl)
-            ?: strings(root).firstOrNull(::isHlsUrl)
+        return (hlsEntries.mapNotNull { it.str("result") }.filter(::isHlsUrl) + strings(root).filter(::isHlsUrl))
+            .distinct()
+            .toList()
     }
 
     fun isHlsUrl(s: String) = s.startsWith("http") && s.contains(".m3u8")

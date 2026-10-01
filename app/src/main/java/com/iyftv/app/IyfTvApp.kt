@@ -11,7 +11,9 @@ import com.iyftv.app.data.iyf.WebViewKeyFetcher
 import com.iyftv.app.data.iyf.WebViewStreamSniffer
 import com.iyftv.app.data.update.UpdateChecker
 import okhttp3.CookieJar
+import okhttp3.Dns
 import okhttp3.OkHttpClient
+import java.net.Inet4Address
 import java.util.concurrent.TimeUnit
 
 class IyfTvApp : Application() {
@@ -33,6 +35,12 @@ class IyfTvApp : Application() {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .cookieJar(WebViewCookieJar())
+            // Stream links are tied to the IP that asked for them. Preferring IPv4 keeps the
+            // API call and the video requests on the same address on dual-stack networks.
+            .dns(object : Dns {
+                override fun lookup(hostname: String) =
+                    Dns.SYSTEM.lookup(hostname).sortedBy { if (it is Inet4Address) 0 else 1 }
+            })
             .build()
         source = IyfVideoSource(http, WebViewStreamSniffer(this), WebViewKeyFetcher(this))
         history = AppDatabase.create(this).watchHistory()

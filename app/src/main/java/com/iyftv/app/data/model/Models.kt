@@ -25,4 +25,5 @@ data class VideoDetail(
 data class Page<T>(val items: List<T>, val hasMore: Boolean)
 
 /** A resolved, directly playable stream. */
-data class Stream(val url: String, val headers: Map<String, String> = emptyMap())
+/** A playable URL, plus other URLs for the same episode to fall back to if it fails. */
+data class Stream(val url: String, val headers: Map<String, String> = emptyMap(), val alternates: List<String> = emptyList())
