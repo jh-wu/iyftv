@@ -91,6 +91,12 @@ class WebPlayerActivity : ComponentActivity() {
 
                 // Refuse the site's video ads, as an ad blocker does in a browser.
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+                    trace?.let { t ->
+                        val u = request.url.toString()
+                        if (TRACED.containsMatchIn(u)) synchronized(t) {
+                            t += "${request.method} $u\n  headers ${request.requestHeaders}\n  cookie ${android.webkit.CookieManager.getInstance().getCookie(u)}"
+                        }
+                    }
                     if (!isAd(request.url)) return null
                     adsBlocked++
                     return WebResourceResponse("video/mp4", null, 404, "Not Found", emptyMap(), ByteArrayInputStream(ByteArray(0)))
@@ -217,6 +223,9 @@ class WebPlayerActivity : ComponentActivity() {
 
     /** Runs [js] in the page; for tests. */
     fun runScript(js: String) = web.evaluateJavascript(js) { }
+
+    /** Runs [js] in the page and hands its result (as JSON) to [done]; for tests. */
+    fun evalScript(js: String, done: (String) -> Unit) = web.evaluateJavascript(js) { done(it) }
 
     /** True while the control bar is on screen. */
     val controlsShown get() = ::controls.isInitialized && controls.visibility == View.VISIBLE
@@ -425,6 +434,10 @@ class WebPlayerActivity : ComponentActivity() {
     companion object {
         /** What the page looked like at the last check, for tests and error reports. */
         @Volatile var lastState: String? = null
+
+        /** When set (by a diagnostic test), the page's API, playlist and segment requests are recorded here. */
+        @Volatile var trace: MutableList<String>? = null
+        private val TRACED = Regex("""\.m3u8|\.ts(\?|$)|\.key|/v3/video/|vip/""")
 
         /** How many ad requests were refused; for tests. */
         @Volatile var adsBlocked = 0
