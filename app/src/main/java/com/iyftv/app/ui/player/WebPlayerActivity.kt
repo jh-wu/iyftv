@@ -196,6 +196,9 @@ class WebPlayerActivity : ComponentActivity() {
         }
     }
 
+    /** Runs [js] in the page; for tests. */
+    fun runScript(js: String) = web.evaluateJavascript(js) { }
+
     /** True while the control bar is on screen. */
     val controlsShown get() = ::controls.isInitialized && controls.visibility == View.VISIBLE
 
@@ -407,17 +410,30 @@ class WebPlayerActivity : ComponentActivity() {
          * The episode's video element. The page holds several, including an empty
          * placeholder clip, so take the one that has real media loaded.
          */
-        private const val PICK = "(function(){var b=null,bs=-1;[].forEach.call(document.querySelectorAll('video'),function(x){" +
+        /**
+         * The episode's video element. The page holds several (an empty placeholder clip,
+         * ad clips), so take the one with real media loaded. Once an element has shown a
+         * full-length video it stays the episode, so a short ad can never take its place.
+         */
+        private const val PICK = "(function(){var m=window.__iyftvMain;if(m&&m.isConnected)return m;" +
+            "var b=null,bs=-1;[].forEach.call(document.querySelectorAll('video'),function(x){" +
             "var src=x.currentSrc||x.src||'';if(/empty\\d*\\.mp4/.test(src))return;" +
             "var sc=x.readyState*10+(src?5:0)+(isFinite(x.duration)&&x.duration>60?20:0)+(x.paused?0:1);" +
-            "if(sc>bs){bs=sc;b=x}});return b})()"
+            "if(sc>bs){bs=sc;b=x}});" +
+            "if(b&&isFinite(b.duration)&&b.duration>60&&b.readyState>=2){window.__iyftvMain=b;b.__iyftvSrc=b.currentSrc}" +
+            "return b})()"
 
         private val PROBE_JS = """
             (function(){
               var v=$PICK;
               var f=[].map.call(document.querySelectorAll('iframe'),function(x){return x.src}).slice(0,3);
               var r={url:location.href,title:document.title,videos:document.querySelectorAll('video').length,iframes:f};
-              r.all=[].map.call(document.querySelectorAll('video'),function(x){return (x.currentSrc||x.src||'').slice(-40)+' '+x.readyState+' '+x.currentTime.toFixed(1)});
+              r.all=[].map.call(document.querySelectorAll('video'),function(x){return (x.currentSrc||x.src||'').slice(-50)+' rs'+x.readyState+' t'+x.currentTime.toFixed(1)+'/'+x.duration+(x.paused?' paused':'')+(x.muted?' muted':'')+(x===window.__iyftvMain?' MAIN':'')});
+              var top=document.elementFromPoint(innerWidth/2,innerHeight/2);
+              r.top=top?(top.tagName+'#'+top.id+'.'+String(top.className).slice(0,60)):null;
+              r.fs=document.fullscreenElement?document.fullscreenElement.tagName:null;
+              r.body=[].map.call(document.body.children,function(x){return x.tagName+'.'+String(x.className).slice(0,30)+(getComputedStyle(x).display==='none'?'(hidden)':'')}).slice(0,15);
+              r.clean=document.documentElement.classList.contains('iyftv-clean');
               if(v){r.src=(v.currentSrc||v.src||'').slice(0,120);r.paused=v.paused;r.t=v.currentTime;r.d=String(v.duration);
                 r.ready=v.readyState;r.net=v.networkState;r.err=v.error?v.error.code+' '+v.error.message:null;}
               return JSON.stringify(r);
@@ -441,21 +457,32 @@ class WebPlayerActivity : ComponentActivity() {
                   'video.iyftv-full{position:fixed!important;left:0!important;top:0!important;width:100vw!important;'+
                   'height:100vh!important;max-width:none!important;max-height:none!important;z-index:2147483647!important;'+
                   'background:#000!important;object-fit:contain!important;transform:none!important}'+
-                  'html.iyftv-clean body>:not(video.iyftv-full){display:none!important}';
+                  'html.iyftv-clean body>:not(video.iyftv-full){display:none!important}'+
+                  'html.iyftv-clean video.iyftv-full{display:block!important;visibility:visible!important;opacity:1!important}';
                 document.head.appendChild(s);
               }
               if(v.parentNode!==document.body){ document.body.appendChild(v); }
               v.classList.add('iyftv-full');
-              // Other videos on the page (ads) stay hidden and silent.
-              [].forEach.call(document.querySelectorAll('video'),function(x){
-                if(x===v) return;
-                x.classList.remove('iyftv-full');
-                if(!x.muted){ x.muted=true; x.__iyftvMuted=true; }
-              });
-              if(v.__iyftvMuted){ v.muted=false; v.__iyftvMuted=false; }
-              // Once the episode itself is playing, hide everything else on the page,
-              // so ads that pop up over the video mid-way are never seen.
-              if(isFinite(v.duration)&&v.duration>60&&v.readyState>=2){ document.documentElement.classList.add('iyftv-clean'); }
+              var main=window.__iyftvMain;
+              if(main===v){
+                // The episode is known: hide everything else on the page, so ads that pop
+                // up over the video mid-way are never seen.
+                document.documentElement.classList.add('iyftv-clean');
+                if(document.fullscreenElement&&document.fullscreenElement!==v&&document.exitFullscreen) document.exitFullscreen();
+                [].forEach.call(document.documentElement.children,function(x){
+                  if(x!==document.head&&x!==document.body) x.style.setProperty('display','none','important');
+                });
+                // Ad clips elsewhere on the page are skipped to their end, so the site's
+                // player moves straight back to the episode.
+                [].forEach.call(document.querySelectorAll('video,audio'),function(x){
+                  if(x===v) return;
+                  x.classList.remove('iyftv-full');
+                  if(!x.paused&&isFinite(x.duration)&&x.duration>0){ try{x.currentTime=x.duration}catch(e){} }
+                });
+                // An ad played in the episode's own element: skip it too.
+                if(v.__iyftvSrc&&v.currentSrc!==v.__iyftvSrc&&isFinite(v.duration)&&v.duration<120){ try{v.currentTime=v.duration}catch(e){} }
+                if(v.currentSrc===v.__iyftvSrc&&v.muted) v.muted=false;
+              }
               if(v.paused && !v.__iyftvPaused){ var p=v.play(); if(p&&p.catch) p.catch(function(){}); }
               return 'ok';
             })()
