@@ -22,15 +22,22 @@ class WebPlayerDeviceTest {
         val ep = detail.episodes.first()
         app.history.delete(detail.key)
         val intent = WebPlayerActivity.intent(app, detail.key, ep.key, 0, detail.title, detail.imageUrl, ep.name, null)
-        ActivityScenario.launch<WebPlayerActivity>(intent).use {
+        ActivityScenario.launch<WebPlayerActivity>(intent).use { scenario ->
             var position = 0L
-            repeat(60) {
+            for (i in 0 until 60) {
                 delay(2_000)
                 position = app.history.get(detail.key)?.positionMs ?: 0L
-                if (position > 0) return@use
+                if (position > 0) break
                 android.util.Log.i("WebPlayerDeviceTest", "page: ${WebPlayerActivity.lastState}")
             }
             assertTrue("web player recorded no progress for ${detail.title} ${ep.name}; page: ${WebPlayerActivity.lastState}", position > 0)
+            // A remote key brings up the control bar.
+            val instrumentation = InstrumentationRegistry.getInstrumentation()
+            instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_DOWN)
+            instrumentation.waitForIdleSync()
+            var shown = false
+            scenario.onActivity { shown = it.controlsShown }
+            assertTrue("control bar did not appear after a remote key", shown)
         }
     }
 }

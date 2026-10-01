@@ -3,18 +3,30 @@ package com.iyftv.app.ui.player
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.view.Gravity
 import android.view.KeyEvent
+import android.view.View
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.WindowManager
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
+import android.widget.ImageButton
+import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.iyftv.app.IyfTvApp
 import com.iyftv.app.data.history.WatchRecord
 import com.iyftv.app.data.iyf.IyfConfig
+import com.iyftv.app.data.model.Episode
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -33,18 +45,35 @@ class WebPlayerActivity : ComponentActivity() {
     private var job: Job? = null
     private var startAt = 0L
     private var seeked = false
+    private var videoKey = ""
+    private var episodeKey = ""
+    private var episodes: List<Episode> = emptyList()
+    private var leaving = false
+
+    private lateinit var controls: LinearLayout
+    private lateinit var titleView: TextView
+    private lateinit var timeView: TextView
+    private lateinit var durationView: TextView
+    private lateinit var progress: ProgressBar
+    private lateinit var playButton: ImageButton
+    private lateinit var prevButton: ImageButton
+    private lateinit var nextButton: ImageButton
+    private var hideJob: Job? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        val videoKey = intent.getStringExtra(EXTRA_VIDEO) ?: return finish()
-        val episodeKey = intent.getStringExtra(EXTRA_EPISODE) ?: return finish()
+        videoKey = intent.getStringExtra(EXTRA_VIDEO) ?: return finish()
+        episodeKey = intent.getStringExtra(EXTRA_EPISODE) ?: return finish()
         startAt = intent.getLongExtra(EXTRA_START, 0L)
         intent.getStringExtra(EXTRA_NOTE)?.let { Toast.makeText(this, it, Toast.LENGTH_LONG).show() }
 
         web = WebView(this).apply {
-            setBackgroundColor(android.graphics.Color.BLACK)
+            setBackgroundColor(Color.BLACK)
+            // The remote drives the app's control bar, not the page.
+            isFocusable = false
+            isFocusableInTouchMode = false
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
@@ -55,17 +84,170 @@ class WebPlayerActivity : ComponentActivity() {
             }
         }
         android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(web, true)
-        setContentView(web)
+        controls = buildControls()
+        setContentView(FrameLayout(this).apply {
+            addView(web, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+            addView(controls, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.BOTTOM))
+        })
         web.loadUrl(IyfConfig.playPageUrl(videoKey, episodeKey))
+
+        lifecycleScope.launch {
+            episodes = runCatching { app.source.detail(videoKey).episodes }.getOrDefault(emptyList())
+            updateEpisodeButtons()
+        }
 
         job = lifecycleScope.launch {
             var tick = 0
             while (isActive) {
-                delay(2_000)
-                fullscreen()
-                if (++tick % 5 == 0) save(videoKey, episodeKey)
+                delay(1_000)
+                tick++
+                if (tick % 2 == 0) fullscreen()
+                if (tick % 10 == 0) save(videoKey, episodeKey)
+                refreshControls()
             }
         }
+    }
+
+    private fun buildControls(): LinearLayout {
+        val dp = resources.displayMetrics.density
+        fun button(icon: Int, label: String, onClick: () -> Unit) = ImageButton(this).apply {
+            setImageResource(icon)
+            contentDescription = label
+            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+            setPadding((12 * dp).toInt(), (12 * dp).toInt(), (12 * dp).toInt(), (12 * dp).toInt())
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.TRANSPARENT) }
+            isFocusable = true
+            setOnFocusChangeListener { v, focused ->
+                (v.background as GradientDrawable).setColor(if (focused) 0x66FFFFFF else Color.TRANSPARENT)
+            }
+            setOnClickListener { onClick(); showControls() }
+            layoutParams = LinearLayout.LayoutParams((56 * dp).toInt(), (56 * dp).toInt()).apply {
+                marginStart = (12 * dp).toInt(); marginEnd = (12 * dp).toInt()
+            }
+        }
+        titleView = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            textSize = 20f
+            text = listOf(intent.getStringExtra(EXTRA_TITLE), intent.getStringExtra(EXTRA_EPISODE_NAME))
+                .filterNot { it.isNullOrBlank() }.joinToString(" ")
+        }
+        timeView = TextView(this).apply { setTextColor(Color.WHITE); textSize = 14f; text = "00:00" }
+        durationView = TextView(this).apply { setTextColor(Color.WHITE); textSize = 14f; text = "00:00" }
+        progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 1000
+            isFocusable = false
+        }
+        prevButton = button(androidx.media3.ui.R.drawable.exo_icon_previous, "上一集") { switchEpisode(-1) }
+        playButton = button(androidx.media3.ui.R.drawable.exo_icon_pause, "播放/暂停") { togglePlay() }
+        nextButton = button(androidx.media3.ui.R.drawable.exo_icon_next, "下一集") { switchEpisode(1) }
+        val rewind = button(androidx.media3.ui.R.drawable.exo_icon_rewind, "后退10秒") { seekBy(-10) }
+        val forward = button(androidx.media3.ui.R.drawable.exo_icon_fastforward, "前进10秒") { seekBy(10) }
+        updateEpisodeButtons()
+
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((48 * dp).toInt(), (32 * dp).toInt(), (48 * dp).toInt(), (24 * dp).toInt())
+            background = GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, intArrayOf(0xE0000000.toInt(), 0x00000000))
+            visibility = View.GONE
+            addView(titleView)
+            addView(LinearLayout(context).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                addView(timeView)
+                addView(progress, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply {
+                    marginStart = (16 * dp).toInt(); marginEnd = (16 * dp).toInt()
+                })
+                addView(durationView)
+            }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = (8 * dp).toInt() })
+            addView(LinearLayout(context).apply {
+                gravity = Gravity.CENTER
+                listOf(prevButton, rewind, playButton, forward, nextButton).forEach(::addView)
+            }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = (8 * dp).toInt() })
+        }
+    }
+
+    private fun updateEpisodeButtons() {
+        if (!::prevButton.isInitialized) return
+        val i = episodes.indexOfFirst { it.key == episodeKey }
+        prevButton.visibility = if (i > 0) View.VISIBLE else View.GONE
+        nextButton.visibility = if (i >= 0 && i + 1 < episodes.size) View.VISIBLE else View.GONE
+    }
+
+    private fun showControls() {
+        if (controls.visibility != View.VISIBLE) {
+            controls.visibility = View.VISIBLE
+            playButton.requestFocus()
+            refreshControls()
+        }
+        hideJob?.cancel()
+        hideJob = lifecycleScope.launch {
+            delay(5_000)
+            controls.visibility = View.GONE
+        }
+    }
+
+    /** True while the control bar is on screen. */
+    val controlsShown get() = ::controls.isInitialized && controls.visibility == View.VISIBLE
+
+    private fun hideControls() {
+        hideJob?.cancel()
+        controls.visibility = View.GONE
+    }
+
+    /** Reads the video's position and state into the control bar; moves on when an episode ends. */
+    private fun refreshControls() {
+        web.evaluateJavascript(
+            "(function(){var v="+PICK+";return v?[v.currentTime,v.duration,v.paused,v.ended]:null})()",
+        ) { result ->
+            val arr = runCatching { JSONArray(result) }.getOrNull() ?: return@evaluateJavascript
+            val t = arr.optDouble(0).takeIf { it.isFinite() } ?: 0.0
+            val d = arr.optDouble(1).takeIf { it.isFinite() } ?: 0.0
+            val paused = arr.optBoolean(2)
+            val ended = arr.optBoolean(3)
+            // The episode itself (not the short ad before it) has finished.
+            if (d >= 60 && (ended || t >= d - 0.5) && !leaving) {
+                switchEpisode(1)
+                return@evaluateJavascript
+            }
+            if (controls.visibility != View.VISIBLE) return@evaluateJavascript
+            timeView.text = clock(t)
+            durationView.text = clock(d)
+            progress.progress = if (d > 0) (t / d * 1000).toInt() else 0
+            playButton.setImageResource(
+                if (paused) androidx.media3.ui.R.drawable.exo_icon_play else androidx.media3.ui.R.drawable.exo_icon_pause,
+            )
+        }
+    }
+
+    private fun clock(seconds: Double): String {
+        val s = seconds.toLong()
+        return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60) else "%02d:%02d".format(s / 60, s % 60)
+    }
+
+    private fun togglePlay() = web.evaluateJavascript(
+        "(function(){var v="+PICK+";if(!v)return;if(v.paused){v.__iyftvPaused=false;v.play()}else{v.__iyftvPaused=true;v.pause()}})()",
+    ) { refreshControls() }
+
+    private fun seekBy(seconds: Int) = web.evaluateJavascript(
+        "(function(){var v="+PICK+";if(v)v.currentTime=Math.max(0,v.currentTime+($seconds))})()",
+    ) { refreshControls() }
+
+    /** Opens the previous ([step] -1) or next (+1) episode in the website's player. */
+    private fun switchEpisode(step: Int) {
+        val i = episodes.indexOfFirst { it.key == episodeKey }
+        val target = episodes.getOrNull(i + step) ?: run {
+            if (step > 0 && i >= 0) { leaving = true; save(videoKey, episodeKey); finish() }
+            return
+        }
+        if (i < 0 || leaving) return
+        leaving = true
+        save(videoKey, episodeKey)
+        startActivity(
+            Companion.intent(
+                this, videoKey, target.key, 0, intent.getStringExtra(EXTRA_TITLE).orEmpty(),
+                intent.getStringExtra(EXTRA_IMAGE), target.name, null,
+            ),
+        )
+        finish()
     }
 
     /** Lifts the page's video element over everything else and keeps it playing. */
@@ -106,22 +288,40 @@ class WebPlayerActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.action != KeyEvent.ACTION_DOWN) return super.dispatchKeyEvent(event)
-        val js = when (event.keyCode) {
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
-            KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE ->
-                "(function(){var v="+PICK+";if(!v)return;if(v.paused){v.__iyftvPaused=false;v.play()}else{v.__iyftvPaused=true;v.pause()}})()"
-            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD ->
-                "(function(){var v="+PICK+";if(v)v.currentTime+=10})()"
-            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND ->
-                "(function(){var v="+PICK+";if(v)v.currentTime-=10})()"
+        val code = event.keyCode
+        // Media keys work the same whether or not the bar is showing.
+        val media: (() -> Unit)? = when (code) {
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> ::togglePlay
+            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { { seekBy(10) } }
+            KeyEvent.KEYCODE_MEDIA_REWIND -> { { seekBy(-10) } }
+            KeyEvent.KEYCODE_MEDIA_NEXT -> { { switchEpisode(1) } }
+            KeyEvent.KEYCODE_MEDIA_PREVIOUS -> { { switchEpisode(-1) } }
             else -> null
         }
-        if (js != null) {
-            web.evaluateJavascript(js) { }
+        if (media != null) {
+            if (event.action == KeyEvent.ACTION_DOWN) { media(); showControls() }
             return true
         }
-        return super.dispatchKeyEvent(event)
+        if (controls.visibility == View.VISIBLE) {
+            if (code == KeyEvent.KEYCODE_BACK) {
+                if (event.action == KeyEvent.ACTION_UP) hideControls()
+                return true
+            }
+            // The bar is open: arrows move between its buttons, OK presses one.
+            if (event.action == KeyEvent.ACTION_DOWN) showControls()
+            return super.dispatchKeyEvent(event)
+        }
+        // Bar hidden: OK pauses, left/right skip, any of them also brings up the bar.
+        val action: (() -> Unit)? = when (code) {
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> ::togglePlay
+            KeyEvent.KEYCODE_DPAD_RIGHT -> { { seekBy(10) } }
+            KeyEvent.KEYCODE_DPAD_LEFT -> { { seekBy(-10) } }
+            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_INFO -> { {} }
+            else -> null
+        } ?: return super.dispatchKeyEvent(event)
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) { action(); showControls() }
+        else if (event.action == KeyEvent.ACTION_DOWN && code in listOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT)) action()
+        return true
     }
 
     override fun onStop() {
@@ -139,6 +339,7 @@ class WebPlayerActivity : ComponentActivity() {
 
     override fun onDestroy() {
         job?.cancel()
+        hideJob?.cancel()
         if (::web.isInitialized) web.destroy()
         super.onDestroy()
     }
