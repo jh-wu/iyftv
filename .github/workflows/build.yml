@@ -51,6 +51,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Probe iyf.tv
         run: python3 tools/probe_site.py probe-out
+      - name: Follow a title from search to its video segments
+        run: python3 tools/probe_play.py "沉默的证人" || true
       - name: Run the app's site client against iyf.tv
         run: |
           status=0; IYF_LIVE=1 ./gradlew testDebugUnitTest --tests '*LiveSiteTest*' -q || status=$?

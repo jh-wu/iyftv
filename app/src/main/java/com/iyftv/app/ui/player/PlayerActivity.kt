@@ -3,20 +3,16 @@ package com.iyftv.app.ui.player
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.annotation.OptIn
 import androidx.lifecycle.lifecycleScope
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
-import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.Player
-import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.iyftv.app.IyfTvApp
 import com.iyftv.app.data.history.WatchRecord
@@ -76,22 +72,15 @@ class PlayerActivity : ComponentActivity() {
         episodeIndex = index
         val stream = app.source.stream(d.key, ep.key)
 
-        val dataSource = OkHttpDataSource.Factory(app.http).setDefaultRequestProperties(stream.headers)
-        val p = player ?: ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(dataSource))
-            .build()
+        // Episodes of one title share headers, so the player is built once.
+        val p = player ?: StreamPlayer.create(this, app.http, stream.headers)
             .also { newPlayer ->
                 player = newPlayer
                 playerView.player = newPlayer
                 newPlayer.addListener(listener)
             }
 
-        val item = MediaItem.Builder()
-            .setUri(stream.url)
-            .apply { if (stream.url.contains(".m3u8")) setMimeType(MimeTypes.APPLICATION_M3U8) }
-            .setMediaMetadata(MediaMetadata.Builder().setTitle("${d.title} ${ep.name}").build())
-            .build()
-        p.setMediaItem(item, startMs)
+        p.setMediaItem(StreamPlayer.mediaItem(stream, "${d.title} ${ep.name}"), startMs)
         p.prepare()
         p.playWhenReady = true
         startSaving()
@@ -144,7 +133,8 @@ class PlayerActivity : ComponentActivity() {
     }
 
     private fun fail(e: Throwable) {
-        Toast.makeText(this, "播放失败：${e.message ?: e.javaClass.simpleName}", Toast.LENGTH_LONG).show()
+        Log.w("PlayerActivity", "playback failed", e)
+        Toast.makeText(this, "播放失败：${StreamPlayer.describe(e)}", Toast.LENGTH_LONG).show()
     }
 
     override fun onStart() {
