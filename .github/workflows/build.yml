@@ -52,7 +52,7 @@ jobs:
       - name: Probe iyf.tv
         run: python3 tools/probe_site.py probe-out
       - name: Follow a title from search to its video segments
-        run: python3 tools/probe_play.py "沉默的证人" || true
+        run: echo skipped
       - name: Scores and list filters the site offers
         run: python3 tools/probe_filters.py || true
       - name: Run the app's site client against iyf.tv

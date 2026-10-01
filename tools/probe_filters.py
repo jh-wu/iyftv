@@ -72,3 +72,26 @@ print("\n===== list page markup mentioning filters")
 for k in ["地区", "语言", "年份", "filter", "condition"]:
     for m in list(re.finditer(k, page))[:3]:
         print(f"page {k}:", page[max(0, m.start() - 200):m.start() + 300].replace("\n", " "))
+
+print("\n===== filter option endpoints")
+for path, q in [("/api/list/GetTree", "cid=0,1,3"), ("/v3/list/GetTree", "cid=0,1,3"),
+                ("/v3/list/GetSearchCondition", "version=1"), ("/api/list/GetSearchCondition", "version=1")]:
+    r = api(path, q)
+    print(json.dumps(r, ensure_ascii=False)[:4000])
+print("\n===== endpoint bases")
+for src in scripts:
+    if "main" not in src:
+        continue
+    _, js = fetch(urllib.parse.urljoin(WEB + "/", src))
+    for k in ["APIV3_ENDPOINT:", "API_ENDPOINT:", "APIM10_ENDPOINT:", "APIV3_ENDPOINT=", "API_ENDPOINT="]:
+        for m in list(re.finditer(re.escape(k), js))[:2]:
+            print(f"--- {k}", js[m.start():m.start() + 200])
+    for k in [".rating", ".score", "rating:", "score:"]:
+        for m in list(re.finditer(re.escape(k), js))[:3]:
+            print(f"--- {k}:", js[max(0, m.start() - 250):m.start() + 250].replace("\n", " "))
+print("\n===== filtered list")
+api("/api/list/Search", "cinema=1&page=1&size=3&orderby=0&desc=1&cid=0,1,3&isserial=-1&isIndex=-1&isfree=-1&region=日本&language=&year=&label=")
+r = api("/api/list/Search", "cinema=1&page=1&size=3&orderby=0&desc=1&cid=0,1,3&isserial=-1&isIndex=-1&isfree=-1&region=%E6%97%A5%E6%9C%AC")
+print([ (i.get("title"), i.get("regional")) for i in (r.get("data", {}).get("info") or [{}])[0].get("result") or []])
+r = api("/api/list/Search", "cinema=1&page=1&size=3&orderby=0&desc=1&cid=0,1,3&isserial=-1&isIndex=-1&isfree=-1&language=%E8%8B%B1%E8%AF%AD")
+print([ (i.get("title"), i.get("lang")) for i in (r.get("data", {}).get("info") or [{}])[0].get("result") or []])
