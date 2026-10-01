@@ -23,7 +23,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.iyftv.app.IyfTvApp
 import com.iyftv.app.data.history.WatchRecord
-import com.iyftv.app.data.iyf.IyfConfig
 import com.iyftv.app.data.model.Stream
 import com.iyftv.app.data.model.VideoDetail
 import kotlinx.coroutines.Job
@@ -50,7 +49,6 @@ class PlayerActivity : ComponentActivity() {
     private var refetched = false
     private var profiles: StreamPlayer.HeaderProfiles? = null
     private val attempts = mutableListOf<String>()
-    private var browserLinkTried = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -107,7 +105,6 @@ class PlayerActivity : ComponentActivity() {
         fallbackUrls.addAll(stream.alternates)
         if (!retry) {
             refetched = false
-            browserLinkTried = false
             attempts.clear()
         }
 
@@ -125,33 +122,6 @@ class PlayerActivity : ComponentActivity() {
         p.prepare()
         p.playWhenReady = true
         startSaving()
-    }
-
-    private suspend fun playBrowserLink(position: Long) {
-        val d = detail ?: return
-        val ep = d.episodes[episodeIndex]
-        val sniffed = runCatching { app.sniffer.sniffRequest(IyfConfig.playPageUrl(d.key, ep.key)) }.getOrNull()
-        val p = player
-        if (sniffed == null || p == null) {
-            attempts += "browser link: none found"
-            openWebPlayer(position)
-            return
-        }
-        val (url, headers) = sniffed
-        attempts += "browser link → ${Uri.parse(url).host}"
-        val stream = Stream(url, headers.ifEmpty { IyfConfig.defaultHeaders })
-        currentStream = stream
-        profiles = StreamPlayer.headerProfiles(this, stream.headers).also { it.reset() }
-        player?.release()
-        player = null
-        // A fresh player picks up the new header sets.
-        val fresh = StreamPlayer.create(this, app.http, profiles!!)
-        player = fresh
-        playerView.player = fresh
-        fresh.addListener(listener)
-        fresh.setMediaItem(StreamPlayer.mediaItem(stream, "${d.title} ${ep.name}"), position)
-        fresh.prepare()
-        fresh.playWhenReady = true
     }
 
     private fun openWebPlayer(position: Long) {
@@ -206,17 +176,10 @@ class PlayerActivity : ComponentActivity() {
                     lifecycleScope.launch { runCatching { playEpisode(episodeIndex, position, retry = true) }.onFailure(::fail) }
                     return
                 }
-                if (status == 403) {
-                    // Refused whatever the app sends: try the link the website itself
-                    // fetches in a browser engine, then hand over to the website's player.
-                    if (!browserLinkTried) {
-                        browserLinkTried = true
-                        lifecycleScope.launch { playBrowserLink(position) }
-                        return
-                    }
-                    openWebPlayer(position)
-                    return
-                }
+                // Every link and request style failed (in Australia the video servers refuse
+                // anything but a browser): hand over to the website's own player.
+                openWebPlayer(position)
+                return
             }
             fail(error)
         }
