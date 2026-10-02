@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,7 +50,7 @@ fun HomeScreen(
     onOpenVideo: (String) -> Unit,
     onResume: (WatchRecord) -> Unit,
     onSearch: () -> Unit,
-    onCheckUpdate: () -> Unit,
+    onSettings: () -> Unit,
 ) {
     val categories by vm.categories.collectAsState()
     val allRecent by vm.continueWatching.collectAsState()
@@ -59,7 +60,7 @@ fun HomeScreen(
     val tabFocus = remember { FocusRequester() }
 
     Column(Modifier.fillMaxSize()) {
-        // One row: 继续观看 as an icon tab, the six categories, then search and update.
+        // One row: 继续观看 as an icon tab, the six categories, then search and settings.
         Row(
             Modifier.fillMaxWidth().padding(start = 40.dp, end = 48.dp, top = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -89,7 +90,7 @@ fun HomeScreen(
                 }
             }
             HeaderButton(Icons.Default.Search, "搜索", onSearch)
-            HeaderButton(AppIcons.Update, "检查更新", onCheckUpdate)
+            HeaderButton(Icons.Default.Settings, "设置", onSettings)
         }
         if (categories.isEmpty()) return@Column
         val current = selected.coerceIn(0..categories.size)

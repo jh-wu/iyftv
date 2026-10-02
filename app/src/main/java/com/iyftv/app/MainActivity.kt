@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
                                 // Open the title's page under the player, so leaving playback lands there.
                                 onResume = { openVideo(it.videoKey); play(it.videoKey, it.episodeKey) },
                                 onSearch = { nav.navigate("search") },
-                                onCheckUpdate = updates::checkNow,
+                                onSettings = updates::showAbout,
                             )
                         }
                         composable("search") {

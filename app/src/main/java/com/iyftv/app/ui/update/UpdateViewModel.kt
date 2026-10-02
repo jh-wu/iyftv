@@ -17,6 +17,8 @@ import java.io.File
 
 sealed interface UpdateState {
     data object Hidden : UpdateState
+    /** The settings dialog: which build is installed, with a button to check for a newer one. */
+    data object About : UpdateState
     data object Checking : UpdateState
     data class UpToDate(val build: Int) : UpdateState
     data class Available(val release: Release) : UpdateState
@@ -32,6 +34,7 @@ class UpdateViewModel(private val checker: UpdateChecker, private val app: Appli
     val state: StateFlow<UpdateState> = _state
 
     val currentBuild get() = checker.currentBuild
+    val versionName: String get() = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull() ?: "?"
     private var job: Job? = null
 
     init {
@@ -42,7 +45,12 @@ class UpdateViewModel(private val checker: UpdateChecker, private val app: Appli
         }
     }
 
-    /** Check from the menu button: always says what it found. */
+    fun showAbout() {
+        job?.cancel()
+        _state.value = UpdateState.About
+    }
+
+    /** Check from the settings dialog: always says what it found. */
     fun checkNow() {
         job?.cancel()
         _state.value = UpdateState.Checking

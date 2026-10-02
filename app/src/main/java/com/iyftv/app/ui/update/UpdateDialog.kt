@@ -28,6 +28,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import com.iyftv.app.data.update.GitHubReleases
 
 @Composable
 fun UpdateDialog(vm: UpdateViewModel) {
@@ -46,6 +47,10 @@ fun UpdateDialog(vm: UpdateViewModel) {
 
     when (s) {
         UpdateState.Hidden -> Unit
+        UpdateState.About -> UpdateBox("设置", "当前版本：build ${vm.currentBuild}（${vm.versionName}）\n更新来源：GitHub ${GitHubReleases.REPO}", onBack = vm::dismiss) {
+            Choice("检查更新", primary = true, onClick = vm::checkNow)
+            Choice("关闭", onClick = vm::dismiss)
+        }
         UpdateState.Checking -> UpdateBox("正在检查更新…", current, onBack = vm::dismiss) {
             Choice("取消", primary = true, onClick = vm::dismiss)
         }

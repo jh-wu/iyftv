@@ -187,8 +187,8 @@ class PlayerActivity : ComponentActivity() {
         fun frame() = StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_focused), GradientDrawable().apply {
                 cornerRadius = 8 * density
-                setColor(0x33FFFFFF)
-                setStroke((3 * density).toInt(), FOCUS_COLOR)
+                setColor(0x1AFFFFFF)
+                setStroke((3 * density).toInt(), FRAME_COLOR)
             })
             addState(intArrayOf(), ColorDrawable(Color.TRANSPARENT))
         }
@@ -369,6 +369,8 @@ class PlayerActivity : ComponentActivity() {
     companion object {
         private const val FOCUS_COLOR = Color.WHITE
         private const val DIM_COLOR = 0xFFB0B0B0.toInt()
+        /** White at 50% opacity: visible on any picture without being glaring. */
+        private const val FRAME_COLOR = 0x80FFFFFF.toInt()
         private const val EXTRA_VIDEO = "video"
         private const val EXTRA_EPISODE = "episode"
 
