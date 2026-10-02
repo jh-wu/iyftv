@@ -4,10 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -49,7 +49,6 @@ fun HomeScreen(
     onOpenVideo: (String) -> Unit,
     onResume: (WatchRecord) -> Unit,
     onSearch: () -> Unit,
-    onHistory: () -> Unit,
     onCheckUpdate: () -> Unit,
 ) {
     val categories by vm.categories.collectAsState()
@@ -60,42 +59,48 @@ fun HomeScreen(
     val tabFocus = remember { FocusRequester() }
 
     Column(Modifier.fillMaxSize()) {
+        // One row: 继续观看 as an icon tab, the six categories, then search and update.
         Row(
-            Modifier.fillMaxWidth().padding(start = 48.dp, end = 48.dp, top = 24.dp),
+            Modifier.fillMaxWidth().padding(start = 40.dp, end = 48.dp, top = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("iyfTV", style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.weight(1f))
+            if (categories.isNotEmpty()) {
+                val current = selected.coerceIn(0..categories.size)
+                TabRow(selectedTabIndex = current) {
+                    (0..categories.size).forEach { i ->
+                        Tab(
+                            selected = i == current,
+                            onFocus = { vm.selectTab(i) },
+                            onClick = { vm.selectTab(i) },
+                            modifier = if (i == current) Modifier.focusRequester(tabFocus) else Modifier,
+                        ) {
+                            if (i == 0) {
+                                Icon(
+                                    AppIcons.History,
+                                    contentDescription = CONTINUE_TAB,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp).size(24.dp),
+                                )
+                            } else {
+                                Text(categories[i - 1].name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+                            }
+                        }
+                    }
+                }
+            }
             HeaderButton(Icons.Default.Search, "搜索", onSearch)
-            HeaderButton(AppIcons.History, "观看记录", onHistory)
             HeaderButton(AppIcons.Update, "检查更新", onCheckUpdate)
         }
         if (categories.isEmpty()) return@Column
-
-        // The six categories, then 继续观看 as the last tab.
-        val tabNames = categories.map { it.name } + CONTINUE_TAB
-        val current = selected.coerceIn(tabNames.indices)
-        TabRow(selectedTabIndex = current, modifier = Modifier.padding(start = 40.dp, top = 12.dp)) {
-            tabNames.forEachIndexed { i, name ->
-                Tab(
-                    selected = i == current,
-                    onFocus = { vm.selectTab(i) },
-                    onClick = { vm.selectTab(i) },
-                    modifier = if (i == current) Modifier.focusRequester(tabFocus) else Modifier,
-                ) {
-                    Text(name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
-                }
-            }
-        }
+        val current = selected.coerceIn(0..categories.size)
 
         LaunchedEffect(Unit) { runCatching { tabFocus.requestFocus() } }
 
-        if (current == categories.size) {
+        if (current == 0) {
             ContinueWatching(recent, onResume)
             return@Column
         }
-        val category = categories[current]
+        val category = categories[current - 1]
         key(category.id) {
             val gridVm = categoryViewModel(category)
             val state by gridVm.state.collectAsState()

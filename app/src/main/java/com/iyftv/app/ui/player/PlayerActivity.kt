@@ -9,6 +9,11 @@ import android.view.WindowManager
 import android.graphics.Color
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
+import android.widget.ImageButton
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.FrameLayout
@@ -16,10 +21,12 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.annotation.OptIn
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.DefaultTimeBar
 import androidx.media3.ui.PlayerView
 import com.iyftv.app.IyfTvApp
 import com.iyftv.app.data.history.PlayerChoice
@@ -58,6 +65,11 @@ class PlayerActivity : ComponentActivity() {
             useController = true
             keepScreenOn = true
         }
+        styleControls(playerView)
+        // The control bar opens with the progress bar focused, so left/right seek straight away.
+        playerView.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+            if (visibility == View.VISIBLE) playerView.post { progressBar()?.requestFocus() }
+        })
         errorView = TextView(this).apply {
             setTextColor(Color.WHITE)
             textSize = 16f
@@ -114,7 +126,7 @@ class PlayerActivity : ComponentActivity() {
         val p = player ?: StreamPlayer.create(this, app.http, headerProfiles)
             .also { newPlayer ->
                 player = newPlayer
-                playerView.player = newPlayer
+                playerView.player = EpisodePlayer(newPlayer)
                 newPlayer.addListener(listener)
             }
 
@@ -134,6 +146,78 @@ class PlayerActivity : ComponentActivity() {
         startActivity(WebPlayerActivity.intent(this, d.key, ep.key, position, d.title, d.imageUrl, ep.name, note))
         finish()
     }
+
+    private fun progressBar(): DefaultTimeBar? = playerView.findViewById(androidx.media3.ui.R.id.exo_progress)
+
+    /**
+     * Makes the focused control obvious from across the room: an amber frame and a larger
+     * size on buttons, and an amber bar while the progress bar has focus.
+     */
+    private fun styleControls(root: View) {
+        val density = resources.displayMetrics.density
+        fun frame() = StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_focused), GradientDrawable().apply {
+                cornerRadius = 8 * density
+                setColor(0x55FFB400)
+                setStroke((3 * density).toInt(), FOCUS_COLOR)
+            })
+            addState(intArrayOf(), ColorDrawable(Color.TRANSPARENT))
+        }
+        when (root) {
+            is DefaultTimeBar -> {
+                root.background = frame()
+                root.setKeyTimeIncrement(10_000)
+                root.setOnFocusChangeListener { _, focused ->
+                    val c = if (focused) FOCUS_COLOR else Color.WHITE
+                    root.setPlayedColor(c)
+                    root.setScrubberColor(c)
+                }
+            }
+            is ImageButton, is android.widget.Button -> {
+                root.background = frame()
+                root.setOnFocusChangeListener { v, focused ->
+                    val scale = if (focused) 1.3f else 1f
+                    v.animate().scaleX(scale).scaleY(scale).setDuration(120).start()
+                }
+            }
+            is ViewGroup -> for (i in 0 until root.childCount) styleControls(root.getChildAt(i))
+        }
+    }
+
+    /** Lets the control bar's previous and next buttons move between the title's episodes. */
+    private inner class EpisodePlayer(player: Player) : ForwardingPlayer(player) {
+        private fun hasNext() = detail?.let { episodeIndex + 1 < it.episodes.size } == true
+
+        override fun getAvailableCommands(): Player.Commands = super.getAvailableCommands().buildUpon()
+            .addIf(Player.COMMAND_SEEK_TO_NEXT, hasNext())
+            .removeIf(Player.COMMAND_SEEK_TO_NEXT, !hasNext())
+            .build()
+
+        override fun isCommandAvailable(command: Int): Boolean =
+            if (command == Player.COMMAND_SEEK_TO_NEXT) hasNext() else super.isCommandAvailable(command)
+
+        override fun hasNextMediaItem() = hasNext()
+
+        override fun seekToNext() {
+            if (hasNext()) switchEpisode(1)
+        }
+
+        override fun seekToPrevious() {
+            if (episodeIndex > 0 && currentPosition < 3_000) switchEpisode(-1) else seekTo(0)
+        }
+    }
+
+    private fun switchEpisode(step: Int) {
+        save()
+        lifecycleScope.launch { runCatching { playEpisode(episodeIndex + step, 0) }.onFailure(::fail) }
+    }
+
+    /** The episode being played, and the player the control bar drives; for tests. */
+    val currentEpisode get() = episodeIndex
+    val controlsPlayer: Player? get() = playerView.player
+    fun showControls() = playerView.showController()
+    val focusedControl: View? get() = playerView.findFocus()
+    val progressBarView: View? get() = progressBar()
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -248,6 +332,7 @@ class PlayerActivity : ComponentActivity() {
     }
 
     companion object {
+        private const val FOCUS_COLOR = 0xFFFFB400.toInt()
         private const val EXTRA_VIDEO = "video"
         private const val EXTRA_EPISODE = "episode"
 

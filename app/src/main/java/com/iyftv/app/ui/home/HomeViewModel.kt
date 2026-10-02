@@ -16,8 +16,8 @@ import kotlinx.coroutines.launch
 
 class HomeViewModel(source: VideoSource, history: WatchHistoryDao, private val prefs: SharedPreferences) : ViewModel() {
 
-    /** The open tab, kept across visits to a title and app restarts. */
-    private val _selectedTab = MutableStateFlow(prefs.getInt(KEY_TAB, 0))
+    /** The open tab (0 is 继续观看, then the categories), kept across visits to a title and app restarts. */
+    private val _selectedTab = MutableStateFlow(prefs.getInt(KEY_TAB, 1))
     val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
 
     fun selectTab(index: Int) {
@@ -38,6 +38,6 @@ class HomeViewModel(source: VideoSource, history: WatchHistoryDao, private val p
     }
 
     private companion object {
-        const val KEY_TAB = "selected_tab"
+        const val KEY_TAB = "selected_tab_v2"
     }
 }
