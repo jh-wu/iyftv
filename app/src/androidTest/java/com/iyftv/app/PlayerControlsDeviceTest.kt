@@ -1,5 +1,6 @@
 package com.iyftv.app
 
+import android.view.KeyEvent
 import androidx.media3.common.Player
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -36,8 +37,9 @@ class PlayerControlsDeviceTest {
             var nextEnabled = false
             scenario.onActivity {
                 nextEnabled = it.controlsPlayer?.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT) == true
-                it.showControls()
             }
+            // OK on the remote, as on a TV (this also leaves touch mode, where nothing takes focus).
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
             assertTrue("next episode is disabled on episode 1 of ${series.episodes.size}", nextEnabled)
             delay(1_000)
             var focusOnProgress = false
