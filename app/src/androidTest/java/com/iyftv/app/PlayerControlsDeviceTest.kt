@@ -39,7 +39,13 @@ class PlayerControlsDeviceTest {
                 nextEnabled = it.controlsPlayer?.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT) == true
                 it.hideControls()
             }
-            delay(500)
+            // Let the bar's hide animation finish, as it has when someone reaches for the remote.
+            for (i in 0 until 20) {
+                delay(500)
+                var hidden = false
+                scenario.onActivity { hidden = it.progressBarView?.isShown != true }
+                if (hidden) break
+            }
             // OK on the remote, as on a TV (this also leaves touch mode, where nothing takes focus).
             InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
             assertTrue("next episode is disabled on episode 1 of ${series.episodes.size}", nextEnabled)
