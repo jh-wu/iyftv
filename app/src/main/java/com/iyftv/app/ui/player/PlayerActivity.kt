@@ -179,15 +179,15 @@ class PlayerActivity : ComponentActivity() {
     private fun progressBar(): DefaultTimeBar? = playerView.findViewById(androidx.media3.ui.R.id.exo_progress)
 
     /**
-     * Makes the focused control obvious from across the room: an amber frame and a larger
-     * size on buttons, and an amber bar while the progress bar has focus.
+     * Makes the focused control obvious from across the room: a white frame and a larger
+     * size on buttons, and a brighter, framed bar while the progress bar has focus.
      */
     private fun styleControls(root: View) {
         val density = resources.displayMetrics.density
         fun frame() = StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_focused), GradientDrawable().apply {
                 cornerRadius = 8 * density
-                setColor(0x55FFB400)
+                setColor(0x33FFFFFF)
                 setStroke((3 * density).toInt(), FOCUS_COLOR)
             })
             addState(intArrayOf(), ColorDrawable(Color.TRANSPARENT))
@@ -196,8 +196,10 @@ class PlayerActivity : ComponentActivity() {
             is DefaultTimeBar -> {
                 root.background = frame()
                 root.setKeyTimeIncrement(10_000)
+                root.setPlayedColor(DIM_COLOR)
+                root.setScrubberColor(DIM_COLOR)
                 root.setOnFocusChangeListener { _, focused ->
-                    val c = if (focused) FOCUS_COLOR else Color.WHITE
+                    val c = if (focused) FOCUS_COLOR else DIM_COLOR
                     root.setPlayedColor(c)
                     root.setScrubberColor(c)
                 }
@@ -365,7 +367,8 @@ class PlayerActivity : ComponentActivity() {
     }
 
     companion object {
-        private const val FOCUS_COLOR = 0xFFFFB400.toInt()
+        private const val FOCUS_COLOR = Color.WHITE
+        private const val DIM_COLOR = 0xFFB0B0B0.toInt()
         private const val EXTRA_VIDEO = "video"
         private const val EXTRA_EPISODE = "episode"
 

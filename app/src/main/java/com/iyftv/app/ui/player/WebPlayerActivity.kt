@@ -167,7 +167,7 @@ class WebPlayerActivity : ComponentActivity() {
             setOnTouchListener { _, _ -> true }
             fun highlight(focused: Boolean) {
                 thumb?.alpha = if (focused) 255 else 0
-                progressTintList = android.content.res.ColorStateList.valueOf(if (focused) 0xFFFFB400.toInt() else Color.WHITE)
+                progressTintList = android.content.res.ColorStateList.valueOf(if (focused) Color.WHITE else 0xFFB0B0B0.toInt())
                 scaleY = if (focused) 1.5f else 1f
             }
             highlight(false)
