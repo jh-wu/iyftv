@@ -148,19 +148,21 @@ class PlayerActivity : ComponentActivity() {
         finish()
     }
 
+    private var openingBar = false
+
     /** A remote key while the control bar is hidden opens it on the progress bar (and does nothing else). */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val opensBar = event.keyCode in setOf(
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_DPAD_UP,
             KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
         )
-        if (opensBar) Log.i("PlayerKeys", "key ${event.keyCode} action ${event.action} player=${player != null} fullyVisible=${playerView.isControllerFullyVisible} useController=${playerView.useController}")
-        if (opensBar && player != null && !playerView.isControllerFullyVisible) {
-            if (event.action == KeyEvent.ACTION_DOWN) {
+        if (opensBar && player != null && (!playerView.isControllerFullyVisible || openingBar)) {
+            // A key that leaves touch mode reaches here only as its key-up, so either half opens the bar.
+            if (event.action == KeyEvent.ACTION_DOWN || !openingBar) {
                 playerView.showController()
                 focusProgress()
-                playerView.postDelayed({ Log.i("PlayerKeys", "after show: ${progressBarState} focus=${playerView.findFocus()?.javaClass?.simpleName}") }, 400)
             }
+            openingBar = event.action == KeyEvent.ACTION_DOWN
             return true
         }
         return super.dispatchKeyEvent(event)
