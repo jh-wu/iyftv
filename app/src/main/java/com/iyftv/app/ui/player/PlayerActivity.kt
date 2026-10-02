@@ -186,20 +186,20 @@ class PlayerActivity : ComponentActivity() {
 
     /** Lets the control bar's previous and next buttons move between the title's episodes. */
     private inner class EpisodePlayer(player: Player) : ForwardingPlayer(player) {
-        private fun hasNext() = detail?.let { episodeIndex + 1 < it.episodes.size } == true
+        private fun hasNextEpisode() = detail?.let { episodeIndex + 1 < it.episodes.size } == true
 
         override fun getAvailableCommands(): Player.Commands = super.getAvailableCommands().buildUpon()
-            .addIf(Player.COMMAND_SEEK_TO_NEXT, hasNext())
-            .removeIf(Player.COMMAND_SEEK_TO_NEXT, !hasNext())
+            .addIf(Player.COMMAND_SEEK_TO_NEXT, hasNextEpisode())
+            .removeIf(Player.COMMAND_SEEK_TO_NEXT, !hasNextEpisode())
             .build()
 
         override fun isCommandAvailable(command: Int): Boolean =
-            if (command == Player.COMMAND_SEEK_TO_NEXT) hasNext() else super.isCommandAvailable(command)
+            if (command == Player.COMMAND_SEEK_TO_NEXT) hasNextEpisode() else super.isCommandAvailable(command)
 
-        override fun hasNextMediaItem() = hasNext()
+        override fun hasNextMediaItem() = hasNextEpisode()
 
         override fun seekToNext() {
-            if (hasNext()) switchEpisode(1)
+            if (hasNextEpisode()) switchEpisode(1)
         }
 
         override fun seekToPrevious() {
