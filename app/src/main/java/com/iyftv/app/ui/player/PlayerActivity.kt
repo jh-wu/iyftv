@@ -154,10 +154,12 @@ class PlayerActivity : ComponentActivity() {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_DPAD_UP,
             KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
         )
+        if (opensBar) Log.i("PlayerKeys", "key ${event.keyCode} action ${event.action} player=${player != null} fullyVisible=${playerView.isControllerFullyVisible} useController=${playerView.useController}")
         if (opensBar && player != null && !playerView.isControllerFullyVisible) {
             if (event.action == KeyEvent.ACTION_DOWN) {
                 playerView.showController()
                 focusProgress()
+                playerView.postDelayed({ Log.i("PlayerKeys", "after show: ${progressBarState} focus=${playerView.findFocus()?.javaClass?.simpleName}") }, 400)
             }
             return true
         }
