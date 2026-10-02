@@ -8,6 +8,7 @@ import android.util.Log
 import android.view.WindowManager
 import android.graphics.Color
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.graphics.drawable.ColorDrawable
@@ -147,6 +148,22 @@ class PlayerActivity : ComponentActivity() {
         finish()
     }
 
+    /** A remote key while the control bar is hidden opens it on the progress bar (and does nothing else). */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val opensBar = event.keyCode in setOf(
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_DPAD_UP,
+            KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+        )
+        if (opensBar && player != null && !playerView.isControllerFullyVisible) {
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                playerView.showController()
+                progressBar()?.requestFocus()
+            }
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     private fun progressBar(): DefaultTimeBar? = playerView.findViewById(androidx.media3.ui.R.id.exo_progress)
 
     /**
@@ -215,7 +232,7 @@ class PlayerActivity : ComponentActivity() {
     /** The episode being played, and the player the control bar drives; for tests. */
     val currentEpisode get() = episodeIndex
     val controlsPlayer: Player? get() = playerView.player
-    fun showControls() = playerView.showController()
+    fun hideControls() = playerView.hideController()
     val focusedControl: View? get() = playerView.findFocus()
     val progressBarView: View? get() = progressBar()
 

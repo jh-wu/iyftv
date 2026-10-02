@@ -37,14 +37,20 @@ class PlayerControlsDeviceTest {
             var nextEnabled = false
             scenario.onActivity {
                 nextEnabled = it.controlsPlayer?.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT) == true
+                it.hideControls()
             }
+            delay(500)
             // OK on the remote, as on a TV (this also leaves touch mode, where nothing takes focus).
             InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
             assertTrue("next episode is disabled on episode 1 of ${series.episodes.size}", nextEnabled)
             delay(1_000)
             var focusOnProgress = false
-            scenario.onActivity { focusOnProgress = it.focusedControl != null && it.focusedControl === it.progressBarView }
-            assertTrue("the control bar did not open on the progress bar", focusOnProgress)
+            var focused: String? = null
+            scenario.onActivity {
+                focusOnProgress = it.focusedControl != null && it.focusedControl === it.progressBarView
+                focused = it.focusedControl?.let { v -> "${v.javaClass.simpleName} ${runCatching { v.resources.getResourceEntryName(v.id) }.getOrNull()}" }
+            }
+            assertTrue("the control bar did not open on the progress bar (focus: $focused)", focusOnProgress)
 
             scenario.onActivity { it.controlsPlayer?.seekToNext() }
             delay(3_000)
