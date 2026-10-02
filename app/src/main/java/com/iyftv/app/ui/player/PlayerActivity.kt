@@ -69,7 +69,7 @@ class PlayerActivity : ComponentActivity() {
         styleControls(playerView)
         // The control bar opens with the progress bar focused, so left/right seek straight away.
         playerView.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
-            if (visibility == View.VISIBLE) playerView.post { progressBar()?.requestFocus() }
+            if (visibility == View.VISIBLE) focusProgress()
         })
         errorView = TextView(this).apply {
             setTextColor(Color.WHITE)
@@ -157,11 +157,19 @@ class PlayerActivity : ComponentActivity() {
         if (opensBar && player != null && !playerView.isControllerFullyVisible) {
             if (event.action == KeyEvent.ACTION_DOWN) {
                 playerView.showController()
-                progressBar()?.requestFocus()
+                focusProgress()
             }
             return true
         }
         return super.dispatchKeyEvent(event)
+    }
+
+    /** Focuses the progress bar now and again once the bar has laid out (the controller may refocus play/pause). */
+    private fun focusProgress() {
+        val bar = progressBar() ?: return
+        bar.requestFocus()
+        bar.post { bar.requestFocus() }
+        bar.postDelayed({ if (playerView.isControllerFullyVisible && !bar.isFocused && playerView.findFocus() !is DefaultTimeBar) bar.requestFocus() }, 300)
     }
 
     private fun progressBar(): DefaultTimeBar? = playerView.findViewById(androidx.media3.ui.R.id.exo_progress)
@@ -235,6 +243,10 @@ class PlayerActivity : ComponentActivity() {
     fun hideControls() = playerView.hideController()
     val focusedControl: View? get() = playerView.findFocus()
     val progressBarView: View? get() = progressBar()
+    val progressBarState: String get() = progressBar()?.let {
+        "shown=${it.isShown} vis=${it.visibility} focusable=${it.isFocusable} enabled=${it.isEnabled} w=${it.width} " +
+            "touchMode=${it.isInTouchMode} fullyVisible=${playerView.isControllerFullyVisible}"
+    } ?: "no progress bar"
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {

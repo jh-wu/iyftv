@@ -48,7 +48,8 @@ class PlayerControlsDeviceTest {
             var focused: String? = null
             scenario.onActivity {
                 focusOnProgress = it.focusedControl != null && it.focusedControl === it.progressBarView
-                focused = it.focusedControl?.let { v -> "${v.javaClass.simpleName} ${runCatching { v.resources.getResourceEntryName(v.id) }.getOrNull()}" }
+                focused = it.focusedControl?.let { v -> "${v.javaClass.simpleName} ${runCatching { v.resources.getResourceEntryName(v.id) }.getOrNull()}" } +
+                    "; progress bar ${it.progressBarState}"
             }
             assertTrue("the control bar did not open on the progress bar (focus: $focused)", focusOnProgress)
 
