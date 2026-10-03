@@ -36,8 +36,15 @@ object IyfConfig {
     )
 
     fun listQuery(cid: String, page: Int, filter: ListFilter = emptyMap()) =
-        "cinema=1&page=$page&size=$PAGE_SIZE&orderby=0&desc=1&cid=$cid&isserial=-1&isIndex=-1&isfree=-1" +
+        "cinema=1&page=$page&size=$PAGE_SIZE&orderby=${SORT_ORDERS[filter[SORT.id]] ?: 0}&desc=1&cid=$cid&isserial=-1&isIndex=-1&isfree=-1" +
             FILTERS.mapNotNull { g -> filter[g.id]?.let { "&${g.id}=${encode(it)}" } }.joinToString("")
+
+    /**
+     * How a category is sorted: newest uploads first (list/Search `orderby=0`, the default),
+     * or highest score first (`orderby=3`).
+     */
+    val SORT = FilterGroup("sort", "按上传时间", listOf("按评分"))
+    private val SORT_ORDERS = mapOf("按评分" to 3)
 
     /**
      * The list filters the website offers (its /v3/list/GetSearchCondition), sent to

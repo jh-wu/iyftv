@@ -113,6 +113,12 @@ class IyfParsersTest {
         assertTrue(IyfConfig.listQuery("0,1,3", 1).endsWith("isfree=-1"))
     }
 
+    @Test fun listQuery_sortsByUploadTimeUnlessScoreChosen() {
+        assertTrue(IyfConfig.listQuery("0,1,3", 1).contains("&orderby=0&"))
+        val byScore = IyfConfig.listQuery("0,1,3", 1, mapOf("sort" to "按评分"))
+        assertTrue(byScore, byScore.contains("&orderby=3&") && !byScore.contains("sort="))
+    }
+
     @Test fun siteRegion_readsVisitorRegionFromHomepage() {
         val html = """..."isPhotoEnabled":false}],"switch-region":[{"ipCountry":"AU","regionCode":"AU","regionName":"澳大利亚","largeLogo":"https://static.iyf.tv/images/rv123/AU.png?v=8"}],"slide-list_region_AU_cid_0,1_size_8":[..."""
         assertEquals("AU", IyfParsers.siteRegion(html))

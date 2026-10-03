@@ -40,6 +40,10 @@ class DeviceSiteTest {
             println("DeviceSiteTest 电影 ${g.id}=${g.options.first()}: ${page.items.take(3).map { it.title }}")
             assertTrue("电影 filtered by ${g.id} is empty", page.items.isNotEmpty())
         }
+        // Sorted by score, the first page runs from the highest score down.
+        val scores = source.list(movies, 1, mapOf("sort" to "按评分")).items.mapNotNull { it.score?.toDoubleOrNull() }
+        println("DeviceSiteTest 电影 by score: ${scores.take(8)}")
+        assertTrue("电影 by score not highest first: $scores", scores.size > 5 && scores.zipWithNext().all { (a, b) -> a >= b })
 
         val tv = source.list(source.categories().first { it.name == "电视剧" }, 1).items.first()
         val detail = source.detail(tv.key)

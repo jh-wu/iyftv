@@ -28,7 +28,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.iyftv.app.data.model.FilterGroup
 
-/** A row of buttons, one per filter (地区, 语言, 年份); each opens a list to pick from. */
+/** A row of buttons, one for the sort order and one per filter (地区, 语言, 年份); each opens a list to pick from. */
 @Composable
 fun FilterBar(vm: CategoryViewModel, modifier: Modifier = Modifier) {
     if (vm.filterGroups.isEmpty()) return

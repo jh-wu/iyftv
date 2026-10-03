@@ -34,7 +34,7 @@ class IyfVideoSource(
         return toPage(root, page)
     }
 
-    override fun filters() = IyfConfig.FILTERS
+    override fun filters() = listOf(IyfConfig.SORT) + IyfConfig.FILTERS
 
     override suspend fun search(query: String, page: Int): Page<VideoSummary> {
         val root = api(IyfConfig.SEARCH_PATH, IyfConfig.searchQuery(query, page))
