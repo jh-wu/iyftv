@@ -30,25 +30,39 @@ import com.iyftv.app.data.model.FilterGroup
 
 /** A row of buttons, one for the sort order and one per filter (地区, 语言, 年份); each opens a list to pick from. */
 @Composable
-fun FilterBar(vm: CategoryViewModel, modifier: Modifier = Modifier) {
+fun FilterBar(vm: CategoryViewModel, modifier: Modifier = Modifier, onListClosed: () -> Unit = {}) {
     if (vm.filterGroups.isEmpty()) return
     val filter by vm.filter.collectAsState()
     var open by remember { mutableStateOf<FilterGroup?>(null) }
+    var last by remember { mutableStateOf<FilterGroup?>(null) }
+    val buttons = remember(vm.filterGroups) { vm.filterGroups.associate { it.id to FocusRequester() } }
+
+    // When the list closes, focus goes back to the button that opened it. Otherwise it lands
+    // on the first tab (继续观看), which would switch tabs.
+    LaunchedEffect(open) {
+        if (open == null) last?.let { g -> runCatching { buttons[g.id]?.requestFocus() } }
+    }
 
     Row(modifier.padding(start = 48.dp, top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         vm.filterGroups.forEach { g ->
             val chosen = filter[g.id]
             val label = chosen ?: g.allLabel
+            val m = Modifier.focusRequester(buttons.getValue(g.id))
+            val onClick = { last = g; open = g }
             if (chosen != null) {
-                Button(onClick = { open = g }) { Text("$label ▾") }
+                Button(onClick = onClick, modifier = m) { Text("$label ▾") }
             } else {
-                OutlinedButton(onClick = { open = g }) { Text("$label ▾") }
+                OutlinedButton(onClick = onClick, modifier = m) { Text("$label ▾") }
             }
         }
     }
 
     open?.let { g ->
-        FilterDialog(g, filter[g.id], onPick = { vm.setFilter(g.id, it); open = null }, onDismiss = { open = null })
+        FilterDialog(
+            g, filter[g.id],
+            onPick = { onListClosed(); vm.setFilter(g.id, it); open = null },
+            onDismiss = { onListClosed(); open = null },
+        )
     }
 }
 

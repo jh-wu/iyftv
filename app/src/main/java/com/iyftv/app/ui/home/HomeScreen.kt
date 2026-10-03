@@ -18,6 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.setValue
+import android.os.SystemClock
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -58,6 +61,7 @@ fun HomeScreen(
     val selected by vm.selectedTab.collectAsState()
     // Coming back from a title, focus returns to the tab that was open, so it stays selected.
     val tabFocus = remember { FocusRequester() }
+    var listClosedAt by remember { mutableLongStateOf(0L) }
 
     Column(Modifier.fillMaxSize()) {
         // One row: 继续观看 as an icon tab, the six categories, then search and settings.
@@ -72,7 +76,9 @@ fun HomeScreen(
                     (0..categories.size).forEach { i ->
                         Tab(
                             selected = i == current,
-                            onFocus = { vm.selectTab(i) },
+                            // Focus that lands on a tab right after a sort/filter list closes is
+                            // the list handing focus back, not the user changing tabs.
+                            onFocus = { if (SystemClock.uptimeMillis() - listClosedAt > 1_000) vm.selectTab(i) },
                             onClick = { vm.selectTab(i) },
                             modifier = if (i == current) Modifier.focusRequester(tabFocus) else Modifier,
                         ) {
@@ -105,7 +111,7 @@ fun HomeScreen(
         key(category.id) {
             val gridVm = categoryViewModel(category)
             val state by gridVm.state.collectAsState()
-            FilterBar(gridVm)
+            FilterBar(gridVm, onListClosed = { listClosedAt = SystemClock.uptimeMillis() })
             VideoGrid(
                 state,
                 onOpen = { onOpenVideo(it.key) },
