@@ -95,3 +95,18 @@ r = api("/api/list/Search", "cinema=1&page=1&size=3&orderby=0&desc=1&cid=0,1,3&i
 print([ (i.get("title"), i.get("regional")) for i in (r.get("data", {}).get("info") or [{}])[0].get("result") or []])
 r = api("/api/list/Search", "cinema=1&page=1&size=3&orderby=0&desc=1&cid=0,1,3&isserial=-1&isIndex=-1&isfree=-1&language=%E8%8B%B1%E8%AF%AD")
 print([ (i.get("title"), i.get("lang")) for i in (r.get("data", {}).get("info") or [{}])[0].get("result") or []])
+
+print("\n===== sort orders: what each orderby value returns")
+for ob in range(0, 7):
+    r = api("/api/list/Search", f"cinema=1&page=1&size=6&orderby={ob}&desc=1&cid=0,1,3&isserial=-1&isIndex=-1&isfree=-1", show=False)
+    res = (r.get("data", {}).get("info") or [{}])[0].get("result") or []
+    print(f"orderby={ob}:", [(i.get("title"), i.get("score"), i.get("rating"), i.get("updateweekly"), i.get("addTime") or i.get("publishTime") or i.get("time")) for i in res])
+if items:
+    print("list item keys:", sorted(items[0].keys()))
+for src in scripts:
+    if "main" not in src:
+        continue
+    _, js = fetch(urllib.parse.urljoin(WEB + "/", src))
+    for k in ["orderby", "orderBy", "按评分", "按时间", "评分最高", "最新", "最热", "sortType"]:
+        for m in list(re.finditer(re.escape(k), js))[:4]:
+            print(f"--- {k}:", js[max(0, m.start() - 250):m.start() + 250].replace("\n", " "))
