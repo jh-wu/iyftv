@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- App icon foreground: a TV with a play button, inside the 66dp safe zone. -->
+<!-- App icon foreground: the folded paper arrow, inside the 66dp safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:pathData="M33,34h42a6,6 0 0 1 6,6v26a6,6 0 0 1 -6,6h-42a6,6 0 0 1 -6,-6v-26a6,6 0 0 1 6,-6z" android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:fillColor="#00000000" />
-    <path android:pathData="M48,43.5L48,62.5L64,53z" android:fillColor="#FFFFFFFF" />
-    <path android:pathData="M42,80h24" android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineCap="round" />
+    <group android:scaleX="0.3240" android:scaleY="0.3240" android:translateX="13.82" android:translateY="13.50">
+        <path android:pathData="M66.00,109.00L121.00,84.00L107.00,146.00L54.00,162.00Z" android:fillColor="#FFFF8FCF" />
+        <path android:pathData="M121.00,84.00L194.00,50.00L166.00,127.00Z" android:fillColor="#FF6BDFFF" />
+        <path android:pathData="M107.00,146.00L166.00,127.00L146.00,184.00L95.00,200.00Z" android:fillColor="#FF51C2FF" />
+        <path android:pathData="M121.00,84.00L166.00,127.00L107.00,146.00Z" android:fillColor="#FF6969ED" />
+    </group>
 </vector>

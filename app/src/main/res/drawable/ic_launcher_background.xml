@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App icon background: navy with diagonal bands. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M0.00,14.26L93.74,108.00L0.00,108.00Z" android:fillColor="#FF141C41" />
+    <path android:pathData="M0.00,14.26L0.00,0.00L30.24,0.00L108.00,77.76L108.00,108.00L93.74,108.00Z" android:fillColor="#FF1C2954" />
+    <path android:pathData="M30.24,0.00L49.25,0.00L108.00,58.75L108.00,77.76Z" android:fillColor="#FF223263" />
+    <path android:pathData="M49.25,0.00L69.98,0.00L108.00,38.02L108.00,58.75Z" android:fillColor="#FF27396D" />
+    <path android:pathData="M69.98,0.00L108.00,0.00L108.00,38.02Z" android:fillColor="#FF2B4078" />
+</vector>

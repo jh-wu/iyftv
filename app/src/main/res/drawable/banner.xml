@@ -1,22 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 320x180 launcher banner for Android TV: the app icon and the name. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="320dp" android:height="180dp"
     android:viewportWidth="320" android:viewportHeight="180">
-    <path android:pathData="M0,0h320v180h-320z">
-        <aapt:attr name="android:fillColor">
-            <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="320" android:endY="180"
-                android:startColor="#FF1B1F3B" android:endColor="#FF3A1420" />
-        </aapt:attr>
-    </path>
-    <group android:translateX="34" android:translateY="54">
-        <path android:pathData="M14,0h44a14,14 0 0 1 14,14v44a14,14 0 0 1 -14,14h-44a14,14 0 0 1 -14,-14v-44a14,14 0 0 1 14,-14z" android:fillColor="#FFE5484D" />
-        <group android:scaleX="0.6667" android:scaleY="0.6667">
-            <path android:pathData="M33,34h42a6,6 0 0 1 6,6v26a6,6 0 0 1 -6,6h-42a6,6 0 0 1 -6,-6v-26a6,6 0 0 1 6,-6z" android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:fillColor="#00000000" />
-            <path android:pathData="M48,43.5L48,62.5L64,53z" android:fillColor="#FFFFFFFF" />
-            <path android:pathData="M42,80h24" android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineCap="round" />
-        </group>
+    <path android:pathData="M0.00,23.76L156.24,180.00L0.00,180.00Z" android:fillColor="#FF141C41" />
+    <path android:pathData="M0.00,23.76L0.00,0.00L50.40,0.00L230.40,180.00L156.24,180.00Z" android:fillColor="#FF1C2954" />
+    <path android:pathData="M50.40,0.00L82.08,0.00L262.08,180.00L230.40,180.00Z" android:fillColor="#FF223263" />
+    <path android:pathData="M82.08,0.00L116.64,0.00L296.64,180.00L262.08,180.00Z" android:fillColor="#FF27396D" />
+    <path android:pathData="M116.64,0.00L320.00,0.00L320.00,180.00L296.64,180.00Z" android:fillColor="#FF2B4078" />
+    <group android:scaleX="0.62" android:scaleY="0.62" android:translateX="-6.88" android:translateY="12.50">
+        <path android:pathData="M66.00,109.00L121.00,84.00L107.00,146.00L54.00,162.00Z" android:fillColor="#FFFF8FCF" />
+        <path android:pathData="M121.00,84.00L194.00,50.00L166.00,127.00Z" android:fillColor="#FF6BDFFF" />
+        <path android:pathData="M107.00,146.00L166.00,127.00L146.00,184.00L95.00,200.00Z" android:fillColor="#FF51C2FF" />
+        <path android:pathData="M121.00,84.00L166.00,127.00L107.00,146.00Z" android:fillColor="#FF6969ED" />
     </group>
     <path android:pathData="M125.04 79.19H135.53V112H125.04ZM125.04 66.41H135.53V74.97H125.04ZM139.8 79.19H150.29L159.11 101.45L166.61 79.19H177.09L163.29 115.11Q161.21 120.58 158.45 122.77Q155.68 124.95 151.14 124.95H145.07V118.06H148.35Q151.02 118.06 152.24 117.21Q153.45 116.37 154.12 114.17L154.42 113.26ZM203.31 66.41V73.3H197.51Q195.28 73.3 194.4 74.1Q193.52 74.91 193.52 76.9V79.19H202.49V86.69H193.52V112H183.04V86.69H177.82V79.19H183.04V76.9Q183.04 71.54 186.02 68.98Q189.01 66.41 195.28 66.41ZM201.57 68.26H241.89V76.79H227.38V112H216.11V76.79H201.57ZM241 68.26H252.34L263.94 100.54L275.51 68.26H286.85L270.65 112H257.2Z" android:fillColor="#FFFFFFFF" />
 </vector>
