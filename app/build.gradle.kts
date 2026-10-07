@@ -22,8 +22,10 @@ android {
     }
 
     signingConfigs {
-        // A fixed debug key checked into the repo, so every CI build can be
-        // installed over the previous one without losing watch history.
+        // A fixed key checked into the repo, so every CI build can be installed
+        // over the previous one without losing watch history. Release builds
+        // use it too: builds up to 75 were debug builds signed with it, and
+        // Android only installs an update signed with the same key.
         getByName("debug") {
             storeFile = file("debug.keystore")
             storePassword = "android"
@@ -34,6 +36,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

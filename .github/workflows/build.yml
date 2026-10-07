@@ -19,18 +19,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
+      - name: Build release APK
+        run: ./gradlew assembleRelease
       - uses: actions/upload-artifact@v4
         with:
-          name: iyftv-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: iyftv-release-apk
+          path: app/build/outputs/apk/release/*.apk
       - name: Publish APK as the latest release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk iyftv.apk
+          cp app/build/outputs/apk/release/app-release.apk iyftv.apk
           # The commit message becomes the "what's new" text in the app's update prompt.
           { git log -1 --format=%B; echo; echo "Built from ${{ github.sha }}. Install: https://github.com/${{ github.repository }}/releases/latest/download/iyftv.apk"; } > notes.txt
           gh release create "build-${{ github.run_number }}" iyftv.apk \
@@ -87,7 +87,7 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: adb logcat -G 16M; ./gradlew connectedDebugAndroidTest; s=$?; adb logcat -d -s WebPlayerDiag:I | tail -150; adb logcat -d -s StreamTrace:I PlayerKeys:I | head -400; exit $s
+          script: adb logcat -G 16M; ./gradlew connectedDebugAndroidTest; s=$?; adb logcat -d -s WebPlayerDiag:I | tail -150; adb logcat -d -s StreamTrace:I PlayerKeys:I | head -400; [ $s = 0 ] && tools/release_smoke.sh; s2=$?; [ $s != 0 ] && exit $s; exit $s2
       - uses: actions/upload-artifact@v4
         if: always()
         with:
