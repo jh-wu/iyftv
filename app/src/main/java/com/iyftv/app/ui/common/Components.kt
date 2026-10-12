@@ -39,9 +39,11 @@ fun PosterCard(
     modifier: Modifier = Modifier,
     progress: Float? = null,
     score: String? = null,
+    onLongClick: (() -> Unit)? = null,
+    cardModifier: Modifier = Modifier,
 ) {
     Column(modifier.width(CardWidth)) {
-        Card(onClick = onClick, modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
+        Card(onClick = onClick, onLongClick = onLongClick, modifier = cardModifier.fillMaxWidth().aspectRatio(2f / 3f)) {
             Box(Modifier.fillMaxSize()) {
                 AsyncImage(
                     model = imageUrl,

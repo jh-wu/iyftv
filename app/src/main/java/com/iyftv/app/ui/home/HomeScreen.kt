@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -18,7 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import android.os.SystemClock
 import androidx.compose.runtime.key
@@ -104,7 +106,7 @@ fun HomeScreen(
         LaunchedEffect(Unit) { runCatching { tabFocus.requestFocus() } }
 
         if (current == 0) {
-            ContinueWatching(recent, onResume)
+            ContinueWatching(recent, onResume, vm)
             return@Column
         }
         val category = categories[current - 1]
@@ -131,19 +133,43 @@ private fun HeaderButton(icon: ImageVector, label: String, onClick: () -> Unit) 
 }
 
 @Composable
-private fun ContinueWatching(recent: List<WatchRecord>, onResume: (WatchRecord) -> Unit) {
+private fun ContinueWatching(recent: List<WatchRecord>, onResume: (WatchRecord) -> Unit, vm: HomeViewModel) {
     if (recent.isEmpty()) {
         Message("还没有看到一半的节目")
         return
     }
+    // Long-pressing a title opens its menu; afterwards focus goes back to that title,
+    // or to the one now in its place when it was removed.
+    var menuFor by remember { mutableStateOf<WatchRecord?>(null) }
+    var lastIndex by remember { mutableIntStateOf(-1) }
+    val cards = remember { mutableMapOf<String, FocusRequester>() }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(CardWidth),
         contentPadding = PaddingValues(horizontal = 48.dp, vertical = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        items(recent, key = { it.videoKey }) { r ->
-            PosterCard(r.title, r.imageUrl, "${r.episodeName} · ${formatTime(r.positionMs)}", onClick = { onResume(r) }, progress = r.progress)
+        itemsIndexed(recent, key = { _, r -> r.videoKey }) { i, r ->
+            PosterCard(
+                r.title, r.imageUrl, "${r.episodeName} · ${formatTime(r.positionMs)}",
+                onClick = { onResume(r) },
+                onLongClick = { lastIndex = i; menuFor = r },
+                progress = r.progress,
+                cardModifier = Modifier.focusRequester(cards.getOrPut(r.videoKey) { FocusRequester() }),
+            )
         }
+    }
+    menuFor?.let { r ->
+        TitleMenu(
+            r, vm.playerFor(r.videoKey),
+            onResetPlayer = { vm.resetPlayer(r.videoKey); menuFor = null },
+            onRemove = { vm.removeFromHistory(r.videoKey); menuFor = null },
+            onDismiss = { menuFor = null },
+        )
+    }
+    LaunchedEffect(menuFor, recent) {
+        if (menuFor != null || lastIndex < 0) return@LaunchedEffect
+        val target = recent.getOrNull(lastIndex.coerceAtMost(recent.lastIndex)) ?: return@LaunchedEffect
+        runCatching { cards[target.videoKey]?.requestFocus() }
     }
 }

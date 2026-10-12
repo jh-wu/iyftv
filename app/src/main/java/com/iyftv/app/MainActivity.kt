@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
                     NavHost(nav, startDestination = "home") {
                         composable("home") {
                             HomeScreen(
-                                vm = viewModel { HomeViewModel(app.source, app.history, app.getSharedPreferences("home", MODE_PRIVATE)) },
+                                vm = viewModel { HomeViewModel(app.source, app.history, app.getSharedPreferences("home", MODE_PRIVATE), app.playerChoice) },
                                 categoryViewModel = { c -> viewModel(key = "category-${c.id}") { CategoryViewModel(app.source, c) } },
                                 onOpenVideo = openVideo,
                                 // Open the title's page under the player, so leaving playback lands there.

@@ -22,6 +22,11 @@ class PlayerChoice(context: Context) {
         if (get(videoKey) != player) prefs.edit().putString(videoKey, player.name).apply()
     }
 
+    /** Forgets the player for a title, so the app's player is tried first again. */
+    fun clear(videoKey: String) {
+        prefs.edit().remove(videoKey).apply()
+    }
+
     private companion object {
         const val VERSION = "__version"
     }
