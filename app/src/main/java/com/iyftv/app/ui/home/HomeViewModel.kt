@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
-    source: VideoSource,
+    private val source: VideoSource,
     private val history: WatchHistoryDao,
     private val prefs: SharedPreferences,
     private val playerChoice: PlayerChoice,
@@ -46,6 +46,21 @@ class HomeViewModel(
 
     fun removeFromHistory(videoKey: String) {
         viewModelScope.launch { history.delete(videoKey) }
+    }
+
+    private val posterTried = mutableSetOf<String>()
+
+    /**
+     * Titles watched long ago can keep a poster address the site no longer serves (or none
+     * at all). When one fails to load, fetch the title's page again and save its poster.
+     */
+    fun refreshPoster(videoKey: String) {
+        if (!posterTried.add(videoKey)) return
+        viewModelScope.launch {
+            val fresh = runCatching { source.detail(videoKey).imageUrl }.getOrNull() ?: return@launch
+            val record = history.get(videoKey) ?: return@launch
+            if (record.imageUrl != fresh) history.upsert(record.copy(imageUrl = fresh))
+        }
     }
 
     init {

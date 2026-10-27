@@ -41,6 +41,7 @@ fun PosterCard(
     score: String? = null,
     onLongClick: (() -> Unit)? = null,
     cardModifier: Modifier = Modifier,
+    onImageError: (() -> Unit)? = null,
 ) {
     Column(modifier.width(CardWidth)) {
         Card(onClick = onClick, onLongClick = onLongClick, modifier = cardModifier.fillMaxWidth().aspectRatio(2f / 3f)) {
@@ -48,6 +49,7 @@ fun PosterCard(
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = title,
+                    onError = { onImageError?.invoke() },
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )

@@ -167,7 +167,9 @@ private fun ContinueWatching(recent: List<WatchRecord>, onResume: (WatchRecord) 
                 onLongClick = { lastIndex = i; menuFor = r },
                 progress = r.progress,
                 cardModifier = Modifier.focusRequester(cards.getOrPut(r.videoKey) { FocusRequester() }),
+                onImageError = { vm.refreshPoster(r.videoKey) },
             )
+            if (r.imageUrl == null) LaunchedEffect(r.videoKey) { vm.refreshPoster(r.videoKey) }
         }
     }
     menuFor?.let { r ->
