@@ -21,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -30,13 +29,13 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
-import coil.compose.AsyncImage
 import com.iyftv.app.data.VideoSource
 import com.iyftv.app.data.history.WatchHistoryDao
 import com.iyftv.app.data.history.WatchRecord
 import com.iyftv.app.data.model.VideoDetail
 import com.iyftv.app.ui.common.Load
 import com.iyftv.app.ui.common.Message
+import com.iyftv.app.ui.common.PosterImage
 import com.iyftv.app.ui.common.ScoreColor
 import com.iyftv.app.ui.common.formatTime
 import com.iyftv.app.ui.common.userMessage
@@ -95,12 +94,7 @@ private fun DetailContent(d: VideoDetail, record: WatchRecord?, onPlay: (String?
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
             Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-                AsyncImage(
-                    model = d.imageUrl,
-                    contentDescription = d.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.width(220.dp).aspectRatio(2f / 3f),
-                )
+                PosterImage(d.imageUrl, d.title, Modifier.width(220.dp).aspectRatio(2f / 3f))
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     Text(d.title, style = MaterialTheme.typography.headlineMedium)
                     d.score?.let {

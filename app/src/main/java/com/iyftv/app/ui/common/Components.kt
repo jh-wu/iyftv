@@ -15,6 +15,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,6 +30,7 @@ import androidx.tv.material3.Card
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import com.iyftv.app.data.iyf.IyfConfig
 import com.iyftv.app.data.model.VideoSummary
 
 val CardWidth = 150.dp
@@ -46,13 +51,7 @@ fun PosterCard(
     Column(modifier.width(CardWidth)) {
         Card(onClick = onClick, onLongClick = onLongClick, modifier = cardModifier.fillMaxWidth().aspectRatio(2f / 3f)) {
             Box(Modifier.fillMaxSize()) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = title,
-                    onError = { e -> onImageError?.invoke(e.result.throwable.let { it.message ?: it.javaClass.simpleName }) },
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                PosterImage(imageUrl, title, Modifier.fillMaxSize(), onImageError)
                 if (score != null) {
                     Text(
                         score,
@@ -141,3 +140,24 @@ fun formatTime(ms: Long): String {
 
 /** Amber, as the website shows scores. */
 val ScoreColor = Color(0xFFFFB400)
+
+/**
+ * A poster that switches to the full-size image when the site's thumbnail is gone (older
+ * titles' `…s.gif` thumbnails return 404 while the original still loads). [onError] is
+ * called only when that fails too.
+ */
+@Composable
+fun PosterImage(url: String?, contentDescription: String, modifier: Modifier = Modifier, onError: ((String) -> Unit)? = null) {
+    var model by remember(url) { mutableStateOf(url) }
+    AsyncImage(
+        model = model,
+        contentDescription = contentDescription,
+        onError = { e ->
+            val fullSize = model?.let(IyfConfig::fullSizePoster)
+            if (fullSize != null) model = fullSize
+            else onError?.invoke(e.result.throwable.let { it.message ?: it.javaClass.simpleName })
+        },
+        contentScale = ContentScale.Crop,
+        modifier = modifier,
+    )
+}
