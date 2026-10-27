@@ -48,20 +48,52 @@ class HomeViewModel(
         viewModelScope.launch { history.delete(videoKey) }
     }
 
-    private val posterTried = mutableSetOf<String>()
+    private val posterTried = mutableMapOf<String, MutableSet<String?>>()
+    private val _posterNotes = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    /** What happened to each title's poster this session, shown in its long-press menu. */
+    val posterNotes: StateFlow<Map<String, String>> = _posterNotes.asStateFlow()
+
+    private fun note(videoKey: String, line: String) {
+        _posterNotes.value = _posterNotes.value + (videoKey to listOfNotNull(_posterNotes.value[videoKey], line).joinToString("\n"))
+    }
 
     /**
-     * Titles watched long ago can keep a poster address the site no longer serves (or none
-     * at all). When one fails to load, fetch the title's page again and save its poster.
+     * Titles watched long ago can keep a poster address that no longer loads (or none at all).
+     * When one fails, look for another address: the title's page first, then the search result
+     * for its name, and save the first one not tried yet.
      */
-    fun refreshPoster(videoKey: String) {
-        if (!posterTried.add(videoKey)) return
+    fun refreshPoster(videoKey: String, title: String, failedUrl: String?, error: String) {
+        val tried = posterTried.getOrPut(videoKey) { mutableSetOf() }
+        if (!tried.add(failedUrl)) return
+        note(videoKey, "海报加载失败：${failedUrl ?: "没有地址"}（$error）")
         viewModelScope.launch {
-            val fresh = runCatching { source.detail(videoKey).imageUrl }.getOrNull() ?: return@launch
+            val next = fromDetail(videoKey)?.let { if (it in tried) { note(videoKey, "详情页的海报就是这个地址"); null } else it }
+                ?: fromSearch(videoKey, title)?.takeIf { it !in tried }
+            if (next == null) {
+                note(videoKey, "没有找到其他海报地址")
+                return@launch
+            }
+            note(videoKey, "改用：$next")
             val record = history.get(videoKey) ?: return@launch
-            if (record.imageUrl != fresh) history.upsert(record.copy(imageUrl = fresh))
+            history.upsert(record.copy(imageUrl = next))
         }
     }
+
+    private suspend fun fromDetail(videoKey: String): String? =
+        runCatching { source.detail(videoKey).imageUrl }
+            .onSuccess { if (it == null) note(videoKey, "详情页没有海报") }
+            .onFailure { note(videoKey, "详情页读取失败：${it.message}") }
+            .getOrNull()
+
+    private suspend fun fromSearch(videoKey: String, title: String): String? =
+        runCatching {
+            val hits = source.search(title, 1).items
+            (hits.firstOrNull { it.key == videoKey } ?: hits.firstOrNull { it.title == title })?.imageUrl
+        }
+            .onSuccess { if (it == null) note(videoKey, "搜索结果里没有这部的海报") }
+            .onFailure { note(videoKey, "搜索失败：${it.message}") }
+            .getOrNull()
 
     init {
         viewModelScope.launch { _categories.value = source.categories() }
