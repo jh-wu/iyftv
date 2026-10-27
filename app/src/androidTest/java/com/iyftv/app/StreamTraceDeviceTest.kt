@@ -56,6 +56,7 @@ class StreamTraceDeviceTest {
     }
 
     @Test fun traceWebsiteStream(): Unit = runBlocking {
+        LiveSite.assume()
         val hit = app.source.search("沉默的证人", 1).items.first()
         val detail = app.source.detail(hit.key)
         val ep = detail.episodes.first()

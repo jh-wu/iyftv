@@ -21,6 +21,7 @@ class PlayerControlsDeviceTest {
     private val app get() = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as IyfTvApp
 
     @Test fun progressFocusedAndNextEpisodeEnabled(): Unit = runBlocking {
+        LiveSite.assume()
         val series = app.source.list(app.source.categories().first { it.name == "电视剧" }, 1).items
             .map { app.source.detail(it.key) }.first { it.episodes.size > 1 }
         app.playerChoice.set(series.key, PlayerChoice.Player.App)

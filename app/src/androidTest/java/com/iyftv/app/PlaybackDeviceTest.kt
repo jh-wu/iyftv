@@ -24,12 +24,14 @@ class PlaybackDeviceTest {
     private val app get() = instrumentation.targetContext.applicationContext as IyfTvApp
 
     @Test fun playsSearchedSeries() = runBlocking {
+        LiveSite.assume()
         val hit = app.source.search("沉默的证人", 1).items.first()
         playFirstEpisode(hit.key, "search 沉默的证人 → ${hit.title}")
     }
 
     /** Video requests through Chrome's network stack (Cronet), the first thing the player tries. */
     @Test fun playsThroughCronet() = runBlocking {
+        LiveSite.assume()
         val engine = runCatching { Tasks.await(CronetProviderInstaller.installProvider(app)) }
             .let { StreamPlayer.cronetEngine(app) }
         assumeTrue("Cronet not available on this device", engine != null)
@@ -42,6 +44,7 @@ class PlaybackDeviceTest {
     }
 
     @Test fun playsFirstTvSeries() = runBlocking {
+        LiveSite.assume()
         val tv = app.source.list(app.source.categories().first { it.name == "电视剧" }, 1).items.first()
         playFirstEpisode(tv.key, "电视剧 → ${tv.title}")
     }

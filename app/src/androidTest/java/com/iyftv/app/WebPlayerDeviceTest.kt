@@ -17,6 +17,7 @@ class WebPlayerDeviceTest {
     private val app get() = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as IyfTvApp
 
     @Test fun websitePlayerPlaysAndRecordsProgress() = runBlocking {
+        LiveSite.assume()
         val hit = app.source.search("沉默的证人", 1).items.first()
         val detail = app.source.detail(hit.key)
         val ep = detail.episodes.first()

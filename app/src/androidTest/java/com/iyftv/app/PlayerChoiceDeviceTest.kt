@@ -25,6 +25,7 @@ class PlayerChoiceDeviceTest {
         app.source.list(app.source.categories().first { it.name == "电视剧" }, 1).items.first().key
 
     @Test fun rememberedWhenTheAppPlayerPlays(): Unit = runBlocking {
+        LiveSite.assume()
         val key = firstTvSeries()
         app.getSharedPreferences("player_choice", 0).edit().remove(key).commit()
         ActivityScenario.launch<PlayerActivity>(PlayerActivity.intent(app, key, null)).use {
@@ -37,6 +38,7 @@ class PlayerChoiceDeviceTest {
     }
 
     @Test fun webTitlesOpenInTheWebPlayer(): Unit = runBlocking {
+        LiveSite.assume()
         val key = firstTvSeries()
         app.playerChoice.set(key, PlayerChoice.Player.Web)
         val monitor = Instrumentation.ActivityMonitor(WebPlayerActivity::class.java.name, null, false)

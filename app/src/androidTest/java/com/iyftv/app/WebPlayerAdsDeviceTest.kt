@@ -25,6 +25,7 @@ class WebPlayerAdsDeviceTest {
     private val app get() = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as IyfTvApp
 
     @Test fun episodeStaysOnTopWithSound(): Unit = runBlocking {
+        LiveSite.assume()
         val hit = app.source.search("沉默的证人", 1).items.first()
         val detail = app.source.detail(hit.key)
         val ep = detail.episodes.first()

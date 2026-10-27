@@ -21,6 +21,7 @@ import org.junit.runner.RunWith
 class DeviceSiteTest {
 
     @Test fun browseSearchDetailAndStream() = runBlocking {
+        LiveSite.assume()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val http = OkHttpClient.Builder().cookieJar(WebViewCookieJar()).build()
         val source = IyfVideoSource(http, WebViewStreamSniffer(context), WebViewKeyFetcher(context))
