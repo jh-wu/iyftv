@@ -23,7 +23,7 @@ class IyfTvApp : Application() {
     lateinit var http: OkHttpClient
         private set
     lateinit var source: VideoSource
-        private set
+        internal set // device tests wrap it
     lateinit var history: WatchHistoryDao
         private set
     lateinit var updates: UpdateChecker

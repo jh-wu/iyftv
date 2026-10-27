@@ -64,6 +64,8 @@ fun HomeScreen(
     // Coming back from a title, focus returns to the tab that was open, so it stays selected.
     val tabFocus = remember { FocusRequester() }
     var listClosedAt by remember { mutableLongStateOf(0L) }
+    // Pressing OK on a category tab reloads it: (tab, press count), consumed by that tab's list.
+    var refreshRequest by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
     Column(Modifier.fillMaxSize()) {
         // One row: 继续观看 as an icon tab, the six categories, then search and settings.
@@ -81,7 +83,10 @@ fun HomeScreen(
                             // Focus that lands on a tab right after a sort/filter list closes is
                             // the list handing focus back, not the user changing tabs.
                             onFocus = { if (SystemClock.uptimeMillis() - listClosedAt > 1_000) vm.selectTab(i) },
-                            onClick = { vm.selectTab(i) },
+                            onClick = {
+                                vm.selectTab(i)
+                                if (i > 0) refreshRequest = i to ((refreshRequest?.second ?: 0) + 1)
+                            },
                             modifier = if (i == current) Modifier.focusRequester(tabFocus) else Modifier,
                         ) {
                             if (i == 0) {
@@ -113,6 +118,12 @@ fun HomeScreen(
         key(category.id) {
             val gridVm = categoryViewModel(category)
             val state by gridVm.state.collectAsState()
+            LaunchedEffect(refreshRequest) {
+                if (refreshRequest?.first == current) {
+                    gridVm.refresh()
+                    refreshRequest = null
+                }
+            }
             FilterBar(gridVm, onListClosed = { listClosedAt = SystemClock.uptimeMillis() })
             VideoGrid(
                 state,

@@ -25,4 +25,10 @@ class CategoryViewModel(private val source: VideoSource, private val category: C
         _filter.value = next
         reset { page -> source.list(category, page, next) }
     }
+
+    /** Reloads the list from the first page, keeping the chosen filters. */
+    fun refresh() {
+        val current = _filter.value
+        reset { page -> source.list(category, page, current) }
+    }
 }
