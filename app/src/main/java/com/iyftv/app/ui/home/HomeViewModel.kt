@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iyftv.app.data.VideoSource
 import com.iyftv.app.data.history.PlayerChoice
+import com.iyftv.app.data.iyf.IyfConfig
 import com.iyftv.app.data.history.WatchHistoryDao
 import com.iyftv.app.data.history.WatchRecord
 import com.iyftv.app.data.model.Category
@@ -60,15 +61,16 @@ class HomeViewModel(
 
     /**
      * Titles watched long ago can keep a poster address that no longer loads (or none at all).
-     * When one fails, look for another address: the title's page first, then the search result
-     * for its name, and save the first one not tried yet.
+     * When one fails, look for another address: the full-size copy of a thumbnail, the title's
+     * page, then the search result for its name, and save the first one not tried yet.
      */
     fun refreshPoster(videoKey: String, title: String, failedUrl: String?, error: String) {
         val tried = posterTried.getOrPut(videoKey) { mutableSetOf() }
         if (!tried.add(failedUrl)) return
         note(videoKey, "海报加载失败：${failedUrl ?: "没有地址"}（$error）")
         viewModelScope.launch {
-            val next = fromDetail(videoKey)?.let { if (it in tried) { note(videoKey, "详情页的海报就是这个地址"); null } else it }
+            val next = failedUrl?.let(IyfConfig::fullSizePoster)?.takeIf { it !in tried }
+                ?: fromDetail(videoKey)?.let { if (it in tried) { note(videoKey, "详情页的海报就是这个地址"); null } else it }
                 ?: fromSearch(videoKey, title)?.takeIf { it !in tried }
             if (next == null) {
                 note(videoKey, "没有找到其他海报地址")

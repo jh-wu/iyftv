@@ -59,6 +59,15 @@ object IyfConfig {
         FilterGroup("year", "全部年份", listOf("今年", "去年", "更早", "90年代", "80年代", "怀旧")),
     )
 
+    /**
+     * The full-size poster for a site thumbnail: `…/202205161221492167106s.gif` → `…/202205161221492167106.gif`.
+     * Older titles no longer have the small "s" copy (HTTP 404) but still have the original.
+     */
+    fun fullSizePoster(url: String): String? =
+        THUMB_SUFFIX.find(url)?.let { url.removeRange(it.groups[1]!!.range) }
+
+    private val THUMB_SUFFIX = Regex("""\d(s)\.[A-Za-z]{3,4}(?:\?.*)?$""")
+
     fun searchQuery(keyword: String, page: Int) =
         "tags=${encode(keyword)}&orderby=4&page=$page&size=$PAGE_SIZE&desc=1&isserial=-1"
 

@@ -134,4 +134,14 @@ class IyfParsersTest {
         assertEquals(true, IyfParsers.isSignatureError(IyfParsers.parse("""{"ret":200,"data":{"code":1,"msg":"用户签名错误","info":[]},"msg":""}""")))
         assertEquals(false, IyfParsers.isSignatureError(IyfParsers.parse(listJson)))
     }
+
+    @Test fun fullSizePoster_dropsThumbnailSuffix() {
+        assertEquals(
+            "https://static.iyf.tv/upload/video/202205161221492167106.gif",
+            IyfConfig.fullSizePoster("https://static.iyf.tv/upload/video/202205161221492167106s.gif"),
+        )
+        assertEquals("https://x/a/123.jpg?v=2", IyfConfig.fullSizePoster("https://x/a/123s.jpg?v=2"))
+        assertNull(IyfConfig.fullSizePoster("https://static.iyf.tv/upload/video/202205161221492167106.gif"))
+        assertNull(IyfConfig.fullSizePoster("https://x/a/posters.jpg"))
+    }
 }
