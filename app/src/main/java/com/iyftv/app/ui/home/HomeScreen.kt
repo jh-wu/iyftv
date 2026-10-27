@@ -167,14 +167,14 @@ private fun ContinueWatching(recent: List<WatchRecord>, onResume: (WatchRecord) 
                 onLongClick = { lastIndex = i; menuFor = r },
                 progress = r.progress,
                 cardModifier = Modifier.focusRequester(cards.getOrPut(r.videoKey) { FocusRequester() }),
-                onImageError = { vm.refreshPoster(r.videoKey, r.title, r.imageUrl, it) },
+                onImageError = { vm.refreshPoster(r.videoKey, r.title, r.imageUrl) },
             )
-            if (r.imageUrl == null) LaunchedEffect(r.videoKey) { vm.refreshPoster(r.videoKey, r.title, null, "没有地址") }
+            if (r.imageUrl == null) LaunchedEffect(r.videoKey) { vm.refreshPoster(r.videoKey, r.title, null) }
         }
     }
     menuFor?.let { r ->
         TitleMenu(
-            r, vm.playerFor(r.videoKey), vm.posterNotes.collectAsState().value[r.videoKey],
+            r, vm.playerFor(r.videoKey),
             onResetPlayer = { vm.resetPlayer(r.videoKey); menuFor = null },
             onRemove = { vm.removeFromHistory(r.videoKey); menuFor = null },
             onDismiss = { menuFor = null },

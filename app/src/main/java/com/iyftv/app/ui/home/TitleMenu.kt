@@ -33,7 +33,6 @@ import com.iyftv.app.data.history.WatchRecord
 fun TitleMenu(
     record: WatchRecord,
     player: PlayerChoice.Player?,
-    posterNote: String?,
     onResetPlayer: () -> Unit,
     onRemove: () -> Unit,
     onDismiss: () -> Unit,
@@ -51,7 +50,7 @@ fun TitleMenu(
     Dialog(onDismissRequest = onDismiss) {
         Surface(shape = RoundedCornerShape(16.dp)) {
             Column(
-                Modifier.width(480.dp).padding(24.dp).onPreviewKeyEvent {
+                Modifier.width(360.dp).padding(24.dp).onPreviewKeyEvent {
                     if (it.type == KeyEventType.KeyDown && it.nativeKeyEvent.repeatCount == 0) armed = true
                     false
                 },
@@ -65,12 +64,6 @@ fun TitleMenu(
                     Text("重置播放器")
                 }
                 Text(playerText, style = MaterialTheme.typography.bodySmall)
-                // Shown so a poster that won't load can be reported with its address and error.
-                Text(
-                    posterNote ?: "海报：${record.imageUrl ?: "没有地址"}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
     }

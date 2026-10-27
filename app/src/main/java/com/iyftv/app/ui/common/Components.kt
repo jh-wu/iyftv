@@ -46,7 +46,7 @@ fun PosterCard(
     score: String? = null,
     onLongClick: (() -> Unit)? = null,
     cardModifier: Modifier = Modifier,
-    onImageError: ((String) -> Unit)? = null,
+    onImageError: (() -> Unit)? = null,
 ) {
     Column(modifier.width(CardWidth)) {
         Card(onClick = onClick, onLongClick = onLongClick, modifier = cardModifier.fillMaxWidth().aspectRatio(2f / 3f)) {
@@ -147,15 +147,14 @@ val ScoreColor = Color(0xFFFFB400)
  * called only when that fails too.
  */
 @Composable
-fun PosterImage(url: String?, contentDescription: String, modifier: Modifier = Modifier, onError: ((String) -> Unit)? = null) {
+fun PosterImage(url: String?, contentDescription: String, modifier: Modifier = Modifier, onError: (() -> Unit)? = null) {
     var model by remember(url) { mutableStateOf(url) }
     AsyncImage(
         model = model,
         contentDescription = contentDescription,
-        onError = { e ->
+        onError = {
             val fullSize = model?.let(IyfConfig::fullSizePoster)
-            if (fullSize != null) model = fullSize
-            else onError?.invoke(e.result.throwable.let { it.message ?: it.javaClass.simpleName })
+            if (fullSize != null) model = fullSize else onError?.invoke()
         },
         contentScale = ContentScale.Crop,
         modifier = modifier,
