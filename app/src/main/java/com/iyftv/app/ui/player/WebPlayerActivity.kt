@@ -49,6 +49,8 @@ class WebPlayerActivity : ComponentActivity() {
     private var job: Job? = null
     private var startAt = 0L
     private var seeked = false
+    /** 从头播放: the site's player may resume where it left off, so move it back to the start. */
+    private var fromStart = false
     private var videoKey = ""
     private var episodeKey = ""
     private var episodes: List<Episode> = emptyList()
@@ -74,6 +76,7 @@ class WebPlayerActivity : ComponentActivity() {
         videoKey = intent.getStringExtra(EXTRA_VIDEO) ?: return finish()
         episodeKey = intent.getStringExtra(EXTRA_EPISODE) ?: return finish()
         startAt = intent.getLongExtra(EXTRA_START, 0L)
+        fromStart = intent.getBooleanExtra(EXTRA_FROM_START, false)
         intent.getStringExtra(EXTRA_NOTE)?.let { Toast.makeText(this, it, Toast.LENGTH_LONG).show() }
 
         web = WebView(this).apply {
@@ -321,6 +324,12 @@ class WebPlayerActivity : ComponentActivity() {
                 "(function(){var v="+PICK+";if(v&&v.duration>${startAt / 1000 + 5}){v.currentTime=${startAt / 1000};return 1}return 0})()",
             ) { if (it == "1") seeked = true }
         }
+        if (!seeked && fromStart) {
+            // Longer than any ad, so this is the episode itself.
+            web.evaluateJavascript(
+                "(function(){var v="+PICK+";if(v&&v.duration>60){if(v.currentTime>5)v.currentTime=0;return 1}return 0})()",
+            ) { if (it == "1") seeked = true }
+        }
     }
 
     private fun save(videoKey: String, episodeKey: String) {
@@ -485,6 +494,7 @@ class WebPlayerActivity : ComponentActivity() {
         private const val EXTRA_VIDEO = "video"
         private const val EXTRA_EPISODE = "episode"
         private const val EXTRA_START = "start"
+        private const val EXTRA_FROM_START = "from_start"
         private const val EXTRA_TITLE = "title"
         private const val EXTRA_IMAGE = "image"
         private const val EXTRA_EPISODE_NAME = "episodeName"
@@ -599,6 +609,7 @@ class WebPlayerActivity : ComponentActivity() {
         fun intent(
             context: Context, videoKey: String, episodeKey: String, startMs: Long,
             title: String, imageUrl: String?, episodeName: String, note: String?,
+            fromStart: Boolean = false,
         ) = Intent(context, WebPlayerActivity::class.java)
             .putExtra(EXTRA_VIDEO, videoKey)
             .putExtra(EXTRA_EPISODE, episodeKey)
@@ -607,5 +618,6 @@ class WebPlayerActivity : ComponentActivity() {
             .putExtra(EXTRA_IMAGE, imageUrl)
             .putExtra(EXTRA_EPISODE_NAME, episodeName)
             .putExtra(EXTRA_NOTE, note)
+            .putExtra(EXTRA_FROM_START, fromStart)
     }
 }

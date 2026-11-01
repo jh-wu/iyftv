@@ -30,8 +30,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val app = application as IyfTvApp
-        val play = { videoKey: String, episodeKey: String? ->
-            startActivity(PlayerActivity.intent(this, videoKey, episodeKey))
+        val play = { videoKey: String, episodeKey: String?, fromStart: Boolean ->
+            startActivity(PlayerActivity.intent(this, videoKey, episodeKey, fromStart))
         }
 
         setContent {
@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
                                 categoryViewModel = { c -> viewModel(key = "category-${c.id}") { CategoryViewModel(app.source, c) } },
                                 onOpenVideo = openVideo,
                                 // Open the title's page under the player, so leaving playback lands there.
-                                onResume = { openVideo(it.videoKey); play(it.videoKey, it.episodeKey) },
+                                onResume = { openVideo(it.videoKey); play(it.videoKey, it.episodeKey, false) },
                                 onSearch = { nav.navigate("search") },
                                 onSettings = updates::showAbout,
                             )
@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
                             val key = entry.arguments?.getString("key").orEmpty()
                             DetailScreen(
                                 vm = viewModel { DetailViewModel(app.source, app.history, key) },
-                                onPlay = { episodeKey -> play(key, episodeKey) },
+                                onPlay = { episodeKey, fromStart -> play(key, episodeKey, fromStart) },
                             )
                         }
                     }

@@ -69,7 +69,7 @@ class DetailViewModel(
 }
 
 @Composable
-fun DetailScreen(vm: DetailViewModel, onPlay: (episodeKey: String?) -> Unit) {
+fun DetailScreen(vm: DetailViewModel, onPlay: (episodeKey: String?, fromStart: Boolean) -> Unit) {
     val state by vm.detail.collectAsState()
     val record by vm.record.collectAsState()
     when (val s = state) {
@@ -80,7 +80,7 @@ fun DetailScreen(vm: DetailViewModel, onPlay: (episodeKey: String?) -> Unit) {
 }
 
 @Composable
-private fun DetailContent(d: VideoDetail, record: WatchRecord?, onPlay: (String?) -> Unit) {
+private fun DetailContent(d: VideoDetail, record: WatchRecord?, onPlay: (String?, Boolean) -> Unit) {
     val playFocus = remember { FocusRequester() }
     LaunchedEffect(d.key) { runCatching { playFocus.requestFocus() } }
     val resumable = record?.takeIf { !it.isFinished && d.episodes.any { e -> e.key == it.episodeKey } }
@@ -108,12 +108,12 @@ private fun DetailContent(d: VideoDetail, record: WatchRecord?, onPlay: (String?
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
                         if (resumable != null) {
-                            Button(onClick = { onPlay(resumable.episodeKey) }, modifier = Modifier.focusRequester(playFocus)) {
+                            Button(onClick = { onPlay(resumable.episodeKey, false) }, modifier = Modifier.focusRequester(playFocus)) {
                                 Text("继续播放 ${resumable.episodeName} ${formatTime(resumable.positionMs)}")
                             }
-                            OutlinedButton(onClick = { onPlay(d.episodes.firstOrNull()?.key) }) { Text("从头播放") }
+                            OutlinedButton(onClick = { onPlay(d.episodes.firstOrNull()?.key, true) }) { Text("从头播放") }
                         } else if (d.episodes.isNotEmpty()) {
-                            Button(onClick = { onPlay(d.episodes.first().key) }, modifier = Modifier.focusRequester(playFocus)) {
+                            Button(onClick = { onPlay(d.episodes.first().key, false) }, modifier = Modifier.focusRequester(playFocus)) {
                                 Text("播放")
                             }
                         }
@@ -128,9 +128,9 @@ private fun DetailContent(d: VideoDetail, record: WatchRecord?, onPlay: (String?
             items(d.episodes, key = { it.key }) { ep ->
                 val current = ep.key == record?.episodeKey
                 if (current) {
-                    Button(onClick = { onPlay(ep.key) }) { Text(ep.name, maxLines = 1) }
+                    Button(onClick = { onPlay(ep.key, false) }) { Text(ep.name, maxLines = 1) }
                 } else {
-                    OutlinedButton(onClick = { onPlay(ep.key) }) { Text(ep.name, maxLines = 1) }
+                    OutlinedButton(onClick = { onPlay(ep.key, false) }) { Text(ep.name, maxLines = 1) }
                 }
             }
         }

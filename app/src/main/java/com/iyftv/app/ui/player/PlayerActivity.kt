@@ -52,6 +52,7 @@ class PlayerActivity : ComponentActivity() {
     private var player: ExoPlayer? = null
     private var detail: VideoDetail? = null
     private var episodeIndex = 0
+    private var fromStart = false
     private var saveJob: Job? = null
     private var currentStream: Stream? = null
     private val fallbackUrls = ArrayDeque<String>()
@@ -85,6 +86,7 @@ class PlayerActivity : ComponentActivity() {
 
         val videoKey = intent.getStringExtra(EXTRA_VIDEO) ?: return finish()
         val requestedEpisode = intent.getStringExtra(EXTRA_EPISODE)
+        fromStart = intent.getBooleanExtra(EXTRA_FROM_START, false)
 
         lifecycleScope.launch {
             try {
@@ -95,7 +97,7 @@ class PlayerActivity : ComponentActivity() {
                 val episodeKey = requestedEpisode ?: record?.episodeKey
                 episodeIndex = d.episodes.indexOfFirst { it.key == episodeKey }.coerceAtLeast(0)
                 val start = record
-                    ?.takeIf { it.episodeKey == d.episodes[episodeIndex].key && !it.isFinished }
+                    ?.takeIf { !fromStart && it.episodeKey == d.episodes[episodeIndex].key && !it.isFinished }
                     ?.positionMs ?: 0L
                 playEpisode(episodeIndex, start)
             } catch (e: Exception) {
@@ -144,7 +146,7 @@ class PlayerActivity : ComponentActivity() {
         val note = if (app.playerChoice.get(d.key) == PlayerChoice.Player.Web) null
         else "视频服务器拒绝了播放器，改用网页播放（${attempts.lastOrNull().orEmpty()}）"
         app.playerChoice.set(d.key, PlayerChoice.Player.Web)
-        startActivity(WebPlayerActivity.intent(this, d.key, ep.key, position, d.title, d.imageUrl, ep.name, note))
+        startActivity(WebPlayerActivity.intent(this, d.key, ep.key, position, d.title, d.imageUrl, ep.name, note, fromStart && position == 0L))
         finish()
     }
 
@@ -373,10 +375,13 @@ class PlayerActivity : ComponentActivity() {
         private const val FRAME_COLOR = 0x80FFFFFF.toInt()
         private const val EXTRA_VIDEO = "video"
         private const val EXTRA_EPISODE = "episode"
+        private const val EXTRA_FROM_START = "from_start"
 
-        fun intent(context: Context, videoKey: String, episodeKey: String?) =
+        /** [fromStart] plays the episode from the beginning even when it was watched part way. */
+        fun intent(context: Context, videoKey: String, episodeKey: String?, fromStart: Boolean = false) =
             Intent(context, PlayerActivity::class.java)
                 .putExtra(EXTRA_VIDEO, videoKey)
                 .putExtra(EXTRA_EPISODE, episodeKey)
+                .putExtra(EXTRA_FROM_START, fromStart)
     }
 }
