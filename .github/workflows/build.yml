@@ -2,6 +2,8 @@ name: Build
 
 on:
   push:
+    # Documentation changes don't need a new app release (and update prompt).
+    paths-ignore: ['README.md', 'docs/**']
   pull_request:
   workflow_dispatch:
 

@@ -1,65 +1,54 @@
 # iyfTV
 
-A native Android TV / Google TV client for [iyf.tv](https://www.iyf.tv/), written in Kotlin with
-Jetpack Compose for TV, Media3 (ExoPlayer) and Room.
+An app for watching [iyf.tv](https://www.iyf.tv/) (爱壹帆) on Android TV and Google TV, made for
+the TV remote.
 
-## Features (v1)
+## What it does
 
-- **Browse**: home screen rows per category (电影, 电视剧, 综艺, 动漫, 纪录片), with a paged grid behind "更多".
-- **Search**: keyword search with a paged result grid.
-- **Detail**: poster, synopsis, episode picker.
-- **Playback**: full-screen HLS playback with D-pad controls; auto-advances to the next episode.
-- **Watch history**: position is saved every 10 seconds and when leaving the player. The home
-  screen shows a "继续观看" row, the detail page offers "继续播放", and "观看记录" lists everything.
+- **Browse** 电影, 电视剧, 综艺, 动漫, 纪录片 and 短剧, sorted by 按上传时间 or 按评分, and narrowed
+  by 地区, 语言 and 年份. Press OK on a tab to refresh it.
+- **Search** by name. Your last 20 searches are kept.
+- **Continue watching**: the first tab (the clock icon) lists what you are part way through.
+  Hold OK on a title there to remove it, or to reset its player (see below).
+- **Title page**: poster, score, synopsis and episodes, with 继续播放 to pick up where you left
+  off and 从头播放 to start again.
+- **Playback**: the next episode starts by itself. Press OK or any arrow to show the controls:
+  the progress bar (Left/Right skips 10 seconds), previous and next episode, and play/pause.
+- **Updates**: the app tells you when a new version is out. You can also check from the
+  settings (gear) icon, which shows the version you have.
 
-## Install on Google TV
+### Why some titles show the website's player
 
-Every push to `main` publishes a signed APK to the latest GitHub release:
-<https://github.com/jh-wu/iyftv/releases/latest/download/iyftv.apk>
+Some video servers refuse the app's own player. For those titles the app plays the video in the
+website's player instead (cutting its ad short) and remembers this for next time. If a title later
+works in the app's player again, hold OK on it in 继续观看 and choose 重置播放器 so the app
+tries its own player first.
 
-1. On the TV: Settings → System → About → click **Android TV OS build** 7 times to enable developer options.
-2. Get the APK onto the TV, either with the **Send files to TV** app (install it on both your phone
-   and the TV, then send `iyftv.apk`), or with `adb install iyftv.apk` over the network.
-3. Allow the app you used under Settings → Apps → Security & restrictions → **Unknown sources**, then install.
+## Install
 
-Later builds install over the old one and keep your watch history, because all builds share
-the same signing key (`app/debug.keystore`).
+You only need to do this once. After that the app updates itself.
 
-### Updates
+1. On the TV, open the Google Play Store and install **Downloader** (by AFTVnews).
+2. Open Downloader and enter this address:
+   `https://github.com/jh-wu/iyftv/releases/latest/download/iyftv.apk`
+3. When Android asks, allow Downloader to install apps. You can also turn this on under
+   Settings → Apps → Security & restrictions → **Unknown sources** → Downloader.
+4. Choose **Install**, then **Open**. You can delete the downloaded file afterwards.
 
-After the first install the app updates itself. On start it checks the latest GitHub release;
-when its `build-N` tag is newer than the installed build it asks **更新** or **以后再说**. The
-**检查更新** button on the home screen checks on demand. Updating downloads the APK and opens the
-system installer; the first time, Android asks you to allow iyfTV to install unknown apps.
-This needs the repo to stay public, since the app reads releases without signing in.
+Another way is the **Send files to TV** app: install it on your phone and the TV, send
+`iyftv.apk` from the address above, then open it on the TV and allow that app to install apps
+in the same way.
 
-## Build
+## Updating
 
-Requires Android Studio (or the Android SDK with platform 35) and JDK 17+.
+When a new version is out, the app asks **更新** or **以后再说** when it starts. To check yourself,
+open the settings (gear) icon on the home screen and choose **检查更新**. The first time you
+update, Android asks you to allow iyfTV to install apps. Updates keep your watch history.
 
-```sh
-./gradlew assembleDebug
-adb install app/build/outputs/apk/debug/app-debug.apk
-```
+## Notes
 
-## Layout
+- iyfTV is an unofficial app and is not made by iyf.tv. Everything you watch comes from the
+  iyf.tv website, so what is available depends on the site and your region.
+- The app keeps no account. Your watch history stays on the TV.
 
-```
-app/src/main/java/com/iyftv/app/
-  data/VideoSource.kt          interface the UI talks to
-  data/iyf/                    iyf.tv client: config, request signing, JSON parsing, WebView fallback
-  data/history/                Room database for watch history
-  ui/                          Compose for TV screens and the Media3 player activity
-```
-
-## How the site integration works
-
-The app calls the same JSON API as the iyf.tv web client (`m10.iyf.tv`). Each call is signed
-like the web client's `uriSignature`: `vv = md5(publicKey & lowercase(query) & privateKey)`,
-with the keys read from the `pConfig` block the homepage inlines. If the play API ever fails,
-playback falls back to loading the site's watch page in an off-screen WebView and taking the
-`.m3u8` URL its player requests.
-
-- `./gradlew testDebugUnitTest` runs the parser and signer tests (fixtures are copies of live responses).
-- `IYF_LIVE=1 ./gradlew testDebugUnitTest --tests '*LiveSiteTest*'` runs the client against the real site.
-- CI's `probe-site` job runs both the live test and `tools/probe_site.py`, which dumps raw API responses.
+For building the app yourself, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
